@@ -1,0 +1,16 @@
+{
+  "ignore": [
+    "node_modules/*",
+    "client/*",
+    ".git",
+    "*.test.js",
+    "*.md"
+  ],
+  "watch": [
+    "server.js",
+    "routes/*",
+    "controllers/*",
+    "services/*"
+  ],
+  "ext": "js,json"
+} 

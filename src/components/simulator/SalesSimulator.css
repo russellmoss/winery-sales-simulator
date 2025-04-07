@@ -1,0 +1,22 @@
+.sales-simulator {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  min-height: calc(100vh - 160px); /* Adjust based on header/footer height */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .sales-simulator {
+    padding: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .sales-simulator {
+    padding: 10px;
+  }
+} 

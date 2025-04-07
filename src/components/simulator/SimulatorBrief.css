@@ -1,0 +1,175 @@
+.simulator-brief {
+  background-color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin: 20px;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.brief-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.brief-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.difficulty-badge {
+  background-color: #722f37;
+  color: white;
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.brief-content {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.brief-content section {
+  background-color: #f9fafb;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.brief-content h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 12px 0;
+}
+
+.scenario-description {
+  grid-column: 1 / -1;
+}
+
+.scenario-description p {
+  color: #4b5563;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.profile-details {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.profile-trait {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.trait-label {
+  font-weight: 500;
+  color: #4b5563;
+}
+
+.trait-value {
+  color: #1a1a1a;
+}
+
+.trait-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.trait-tag {
+  background-color: #e5e7eb;
+  color: #4b5563;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.objectives ul,
+.evaluation-criteria ul,
+.key-documents ul {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+}
+
+.objectives li,
+.evaluation-criteria li,
+.key-documents li {
+  color: #4b5563;
+  padding: 8px 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.objectives li:last-child,
+.evaluation-criteria li:last-child,
+.key-documents li:last-child {
+  border-bottom: none;
+}
+
+.key-documents a {
+  color: #722f37;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.key-documents a:hover {
+  color: #591f26;
+  text-decoration: underline;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.metric-card {
+  background-color: white;
+  border-radius: 6px;
+  padding: 12px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.metric-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 600;
+  color: #722f37;
+  margin-bottom: 4px;
+}
+
+.metric-label {
+  display: block;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+@media (max-width: 768px) {
+  .simulator-brief {
+    margin: 10px;
+    padding: 16px;
+  }
+
+  .brief-content {
+    grid-template-columns: 1fr;
+  }
+
+  .metrics-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+} 

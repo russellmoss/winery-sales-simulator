@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /scenarios/{scenarioId} {
+      allow read: if true;  // Allow reading scenarios
+      allow write: if false; // Prevent writing for now
+      
+      match /interactions/{interactionId} {
+        allow read, write: if true;  // Allow access to interactions
+      }
+      
+      match /evaluations/{evaluationId} {
+        allow read, write: if true;  // Allow access to evaluations
+      }
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;  // Secure other collections by default
+    }
+  }
+} 
