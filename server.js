@@ -317,6 +317,82 @@ ${interaction.messages?.map(msg => `${msg.type === 'user' ? 'Customer' : 'Sales 
   }
 });
 
+// Evaluation endpoint
+app.post('/api/claude/evaluate', async (req, res) => {
+  console.log('Received evaluation request');
+  try {
+    const { prompt } = req.body;
+    
+    if (!prompt) {
+      console.error('No prompt provided in request');
+      return res.status(400).json({ error: 'Prompt is required' });
+    }
+
+    console.log('Prompt length:', prompt.length);
+    console.log('Prompt preview:', prompt.substring(0, 200) + '...');
+
+    // The prompt already contains the system instructions, so we don't need to add our own
+    // Just send the prompt directly to Claude
+    const requestBody = {
+      model: CLAUDE_MODEL,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 4000,
+      temperature: 0.2
+    };
+
+    console.log('Sending request to Claude API');
+    // Send request to Claude API
+    const data = await makeClaudeRequest(requestBody);
+    console.log('Received response from Claude API');
+    console.log('Response content type:', typeof data.content);
+    console.log('Response content length:', data.content.length);
+    console.log('Response text preview:', data.content[0].text.substring(0, 200) + '...');
+    
+    // Parse the response
+    let evaluation;
+    try {
+      // Try to extract JSON from the response
+      console.log('Attempting to extract JSON from response');
+      const jsonMatch = data.content[0].text.match(/```json\n([\s\S]*?)\n```/) || 
+                        data.content[0].text.match(/({[\s\S]*?})$/);
+      
+      if (jsonMatch && jsonMatch[1]) {
+        console.log('Found JSON match, parsing...');
+        evaluation = JSON.parse(jsonMatch[1]);
+        console.log('Successfully parsed JSON');
+        console.log('Evaluation keys:', Object.keys(evaluation));
+      } else {
+        console.log('No JSON match found, returning raw response');
+        // If Claude didn't format as JSON properly, we still send back the full text
+        evaluation = { 
+          rawResponse: data.content[0].text,
+          error: 'Failed to parse structured data'
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing Claude response:', error);
+      console.error('Error stack:', error.stack);
+      return res.status(500).json({ 
+        error: 'Failed to parse evaluation response',
+        details: error.message
+      });
+    }
+
+    // Return the evaluation
+    console.log('Sending evaluation response to client');
+    res.json(evaluation);
+  } catch (error) {
+    console.error('Error in evaluation endpoint:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).json({ error: error.message || 'Internal server error' });
+  }
+});
+
 // Helper functions
 function createWineryScenarioSystemPrompt(scenario) {
   if (!scenario) {

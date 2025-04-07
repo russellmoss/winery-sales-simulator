@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude, analyzeAssistantResponseImpact } from '../../services/claudeService';
+import { conversationToMarkdown, generateEvaluationPrompt } from '../../services/exportService';
+import { evaluateConversation, loadRubric } from '../../services/evaluationService';
+import EvaluationDashboard from './EvaluationDashboard';
 import './SimulatorChat.css';
 
 const SimulatorChat = () => {
@@ -9,13 +12,21 @@ const SimulatorChat = () => {
     messages,
     addMessage,
     analyzeInteraction,
-    endSimulation
+    endSimulation,
+    loading: scenarioLoading
   } = useSimulator();
 
   const [inputMessage, setInputMessage] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const [error, setError] = useState(null);
   const messagesEndRef = useRef(null);
+  const [showEvaluation, setShowEvaluation] = useState(false);
+  const [evaluationData, setEvaluationData] = useState(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
+  const [conversationMd, setConversationMd] = useState('');
+  const [rubric, setRubric] = useState('');
+  const [rubricLoading, setRubricLoading] = useState(true);
+  const [evaluationError, setEvaluationError] = useState(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -24,6 +35,23 @@ const SimulatorChat = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  useEffect(() => {
+    const fetchRubric = async () => {
+      try {
+        setRubricLoading(true);
+        const rubricText = await loadRubric();
+        setRubric(rubricText);
+      } catch (error) {
+        console.error('Error loading rubric:', error);
+        setError('Failed to load evaluation rubric');
+      } finally {
+        setRubricLoading(false);
+      }
+    };
+    
+    fetchRubric();
+  }, []);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -70,14 +98,76 @@ const SimulatorChat = () => {
     }
   };
 
-  const handleEndSimulation = () => {
-    if (window.confirm('Are you sure you want to end this simulation?')) {
-      endSimulation();
+  const handleEndSimulation = async () => {
+    if (!window.confirm('Are you sure you want to end this simulation?')) {
+      return;
+    }
+
+    console.log('Starting end simulation process');
+    console.log('Current scenario:', currentScenario);
+    console.log('Messages:', messages);
+    setEvaluationLoading(true);
+    setEvaluationError(null);
+
+    try {
+      // Convert conversation to markdown
+      console.log('Converting conversation to markdown');
+      const conversationMarkdown = conversationToMarkdown(messages, currentScenario);
+      console.log('Conversation markdown length:', conversationMarkdown.length);
+      console.log('Conversation markdown preview:', conversationMarkdown.substring(0, 200) + '...');
+      setConversationMd(conversationMarkdown);
+
+      // Load rubric
+      console.log('Loading rubric');
+      const rubric = await loadRubric();
+      console.log('Rubric loaded, length:', rubric.length);
+      console.log('Rubric preview:', rubric.substring(0, 200) + '...');
+
+      // Generate evaluation prompt
+      console.log('Generating evaluation prompt');
+      const evaluationPrompt = generateEvaluationPrompt(conversationMarkdown, rubric);
+      console.log('Evaluation prompt generated, length:', evaluationPrompt.length);
+      console.log('Evaluation prompt preview:', evaluationPrompt.substring(0, 200) + '...');
+
+      // Evaluate conversation
+      console.log('Evaluating conversation');
+      const evaluationResults = await evaluateConversation(evaluationPrompt);
+      console.log('Evaluation completed:', evaluationResults);
+
+      setEvaluationData(evaluationResults);
+      setShowEvaluation(true); // Show the evaluation dashboard
+      console.log('Evaluation dashboard should now be visible');
+    } catch (error) {
+      console.error('Error during evaluation:', error);
+      console.error('Error stack:', error.stack);
+      setEvaluationError(error.message || 'Failed to evaluate conversation');
+    } finally {
+      setEvaluationLoading(false);
     }
   };
 
+  const handleCloseEvaluation = () => {
+    setShowEvaluation(false);
+    // Don't call endSimulation() here as it resets the simulation state
+    // endSimulation();
+  };
+
+  if (scenarioLoading || rubricLoading) {
+    return (
+      <div className="simulator-chat loading">
+        <div className="loading-spinner"></div>
+        <p>Loading simulation...</p>
+      </div>
+    );
+  }
+
   if (!currentScenario) {
-    return null;
+    return (
+      <div className="simulator-chat error">
+        <h2>Error</h2>
+        <p>No scenario data available. Please try again.</p>
+      </div>
+    );
   }
 
   return (
@@ -87,8 +177,9 @@ const SimulatorChat = () => {
         <button
           className="end-simulation-btn"
           onClick={handleEndSimulation}
+          disabled={evaluationLoading}
         >
-          End Simulation
+          {evaluationLoading ? 'Evaluating...' : 'End Simulation'}
         </button>
       </div>
 
@@ -130,15 +221,30 @@ const SimulatorChat = () => {
           value={inputMessage}
           onChange={(e) => setInputMessage(e.target.value)}
           placeholder="Type your message..."
-          disabled={isTyping}
+          disabled={isTyping || evaluationLoading}
         />
         <button
           type="submit"
-          disabled={isTyping || !inputMessage.trim()}
+          disabled={isTyping || !inputMessage.trim() || evaluationLoading}
         >
           Send
         </button>
       </form>
+
+      {evaluationLoading && (
+        <div className="evaluation-loading">
+          <div className="loading-spinner"></div>
+          <p>Analyzing your sales conversation...</p>
+        </div>
+      )}
+      
+      {showEvaluation && evaluationData && (
+        <EvaluationDashboard 
+          evaluation={evaluationData}
+          conversationMarkdown={conversationMd}
+          onClose={handleCloseEvaluation}
+        />
+      )}
     </div>
   );
 };

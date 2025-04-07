@@ -3,12 +3,21 @@ import { useSimulator } from '../../contexts/SimulatorContext';
 
 function RubricEvaluation() {
   const { currentScenario, interactions, saveScenarioEvaluation, loading, error } = useSimulator();
+  
+  // Convert evaluationCriteria object to array if it exists
+  const criteriaArray = currentScenario?.evaluationCriteria 
+    ? Object.entries(currentScenario.evaluationCriteria).map(([key, value]) => ({
+        id: key,
+        ...value
+      }))
+    : [];
+  
   const [evaluation, setEvaluation] = useState({
-    criteria: currentScenario?.evaluationCriteria.map(criterion => ({
+    criteria: criteriaArray.map(criterion => ({
       criterion,
       score: 0,
       feedback: ''
-    })) || [],
+    })),
     overallFeedback: '',
     totalScore: 0
   });
@@ -105,7 +114,7 @@ function RubricEvaluation() {
         <div className="evaluation-criteria">
           {evaluation.criteria.map((item, index) => (
             <div key={index} className="criterion-item">
-              <h3 className="criterion-title">{item.criterion}</h3>
+              <h3 className="criterion-title">{item.criterion.description}</h3>
               <div className="form-group">
                 <label htmlFor={`score-${index}`}>Score (0-10):</label>
                 <input

@@ -26,6 +26,7 @@ export const SimulatorProvider = ({ children }) => {
   });
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Listen for authentication state changes
   useEffect(() => {
@@ -41,13 +42,18 @@ export const SimulatorProvider = ({ children }) => {
   useEffect(() => {
     const loadScenarios = async () => {
       try {
+        setLoading(true);
+        setError(null);
         const firestoreScenarios = await firestoreService.getAllScenarios();
         if (firestoreScenarios && firestoreScenarios.length > 0) {
           setScenarios(firestoreScenarios);
         }
       } catch (error) {
         console.error('Error loading scenarios from Firestore:', error);
+        setError('Failed to load scenarios from Firestore');
         // Fall back to local scenarios
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -57,24 +63,27 @@ export const SimulatorProvider = ({ children }) => {
   }, [user]);
 
   const startNewSimulation = useCallback(async (scenarioId) => {
-    const scenario = scenarios.find(s => s.id === scenarioId);
-    if (!scenario) {
-      throw new Error('Invalid scenario ID');
-    }
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const scenario = scenarios.find(s => s.id === scenarioId);
+      if (!scenario) {
+        throw new Error('Invalid scenario ID');
+      }
 
-    setIsSimulating(true);
-    setCurrentScenario(scenario);
-    setMessages([]);
-    setMetrics({
-      totalInteractions: 0,
-      successfulSales: 0,
-      averageResponseTime: 0,
-      customerSatisfaction: 0,
-    });
+      setIsSimulating(true);
+      setCurrentScenario(scenario);
+      setMessages([]);
+      setMetrics({
+        totalInteractions: 0,
+        successfulSales: 0,
+        averageResponseTime: 0,
+        customerSatisfaction: 0,
+      });
 
-    // Create a new interaction in Firestore
-    if (user) {
-      try {
+      // Create a new interaction in Firestore
+      if (user) {
         const interaction = {
           userId: user.uid,
           scenarioId: scenario.id,
@@ -93,15 +102,21 @@ export const SimulatorProvider = ({ children }) => {
           id: interactionId,
           ...interaction
         });
-      } catch (error) {
-        console.error('Error creating interaction:', error);
       }
+    } catch (error) {
+      console.error('Error starting simulation:', error);
+      setError(error.message || 'Failed to start simulation');
+    } finally {
+      setLoading(false);
     }
   }, [scenarios, user]);
 
   const endSimulation = useCallback(async () => {
-    if (currentInteraction && user) {
-      try {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (currentInteraction && user) {
         // Update the interaction in Firestore
         const updatedInteraction = {
           ...currentInteraction,
@@ -111,14 +126,17 @@ export const SimulatorProvider = ({ children }) => {
         };
 
         await firestoreService.saveInteraction(updatedInteraction);
-      } catch (error) {
-        console.error('Error updating interaction:', error);
       }
-    }
 
-    setIsSimulating(false);
-    setCurrentScenario(null);
-    setCurrentInteraction(null);
+      setIsSimulating(false);
+      setCurrentScenario(null);
+      setCurrentInteraction(null);
+    } catch (error) {
+      console.error('Error ending simulation:', error);
+      setError(error.message || 'Failed to end simulation');
+    } finally {
+      setLoading(false);
+    }
   }, [currentInteraction, messages, metrics, user]);
 
   const resetSimulation = useCallback(() => {
@@ -132,51 +150,53 @@ export const SimulatorProvider = ({ children }) => {
   }, []);
 
   const addMessage = useCallback(async (message) => {
-    const newMessage = {
-      ...message,
-      timestamp: new Date().toISOString(),
-    };
+    try {
+      const newMessage = {
+        ...message,
+        timestamp: new Date().toISOString(),
+      };
 
-    setMessages(prev => [...prev, newMessage]);
+      setMessages(prev => [...prev, newMessage]);
 
-    // Update the interaction in Firestore
-    if (currentInteraction && user) {
-      try {
+      // Update the interaction in Firestore
+      if (currentInteraction && user) {
         const updatedInteraction = {
           ...currentInteraction,
           messages: [...messages, newMessage]
         };
 
         await firestoreService.saveInteraction(updatedInteraction);
-      } catch (error) {
-        console.error('Error updating interaction with new message:', error);
       }
+    } catch (error) {
+      console.error('Error adding message:', error);
+      setError(error.message || 'Failed to add message');
     }
   }, [messages, currentInteraction, user]);
 
   const analyzeInteraction = useCallback(async (interaction) => {
-    const updatedMetrics = {
-      ...metrics,
-      totalInteractions: metrics.totalInteractions + 1,
-      successfulSales: interaction.successful ? metrics.successfulSales + 1 : metrics.successfulSales,
-      averageResponseTime: (metrics.averageResponseTime * metrics.totalInteractions + interaction.responseTime) / (metrics.totalInteractions + 1),
-      customerSatisfaction: (metrics.customerSatisfaction * metrics.totalInteractions + interaction.satisfaction) / (metrics.totalInteractions + 1),
-    };
+    try {
+      const updatedMetrics = {
+        ...metrics,
+        totalInteractions: metrics.totalInteractions + 1,
+        successfulSales: interaction.successful ? metrics.successfulSales + 1 : metrics.successfulSales,
+        averageResponseTime: (metrics.averageResponseTime * metrics.totalInteractions + interaction.responseTime) / (metrics.totalInteractions + 1),
+        customerSatisfaction: (metrics.customerSatisfaction * metrics.totalInteractions + interaction.satisfaction) / (metrics.totalInteractions + 1),
+      };
 
-    setMetrics(updatedMetrics);
+      setMetrics(updatedMetrics);
 
-    // Update the interaction in Firestore
-    if (currentInteraction && user) {
-      try {
+      // Update the interaction in Firestore
+      if (currentInteraction && user) {
         const updatedInteraction = {
           ...currentInteraction,
           metrics: updatedMetrics
         };
 
         await firestoreService.saveInteraction(updatedInteraction);
-      } catch (error) {
-        console.error('Error updating interaction metrics:', error);
       }
+    } catch (error) {
+      console.error('Error analyzing interaction:', error);
+      setError(error.message || 'Failed to analyze interaction');
     }
   }, [metrics, currentInteraction, user]);
 
@@ -227,6 +247,7 @@ export const SimulatorProvider = ({ children }) => {
     scenarios,
     user,
     loading,
+    error,
     startNewSimulation,
     endSimulation,
     resetSimulation,
