@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:5001/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 const createSystemPrompt = (scenario) => {
   return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character:
@@ -35,8 +35,8 @@ Please respond to the customer's messages in character, based on your role and t
 const formatMessages = (messages) => {
   console.log('Formatting messages:', JSON.stringify(messages, null, 2));
   const formatted = messages.map(msg => ({
-    role: msg.role,
-    content: msg.message || msg.content
+    role: msg.role || 'user',
+    content: msg.message || msg.content || ''
   }));
   console.log('Formatted messages:', JSON.stringify(formatted, null, 2));
   return formatted;
@@ -44,14 +44,42 @@ const formatMessages = (messages) => {
 
 export const sendMessageToClaude = async (scenario, messages) => {
   try {
+    // Format customer profile
+    const customerProfile = {
+      knowledge: scenario.clientPersonality?.knowledge || 'Beginner',
+      budget: scenario.clientPersonality?.budget || 'Moderate',
+      interest: 'High',
+      timeAvailable: '1-2 hours',
+      preferences: scenario.clientPersonality?.preferences || 'Interested in red wines',
+      occasion: 'First visit',
+      groupSize: '2 people'
+    };
+
+    // Format assistant profile
+    const assistantProfile = {
+      role: scenario.assistantRole || 'Wine Tasting Room Associate',
+      experience: '3+ years in wine sales',
+      knowledge: 'Expert in wine and winemaking',
+      personality: 'Friendly, knowledgeable, and passionate about wine',
+      salesApproach: 'Consultative, focusing on customer needs and preferences',
+      specialties: 'Red wines, wine pairing, and wine club membership'
+    };
+
     const response = await fetch(`${API_BASE_URL}/claude/message`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        scenario,
         messages: formatMessages(messages),
+        scenario: scenario,
+        customerProfile: customerProfile,
+        assistantProfile: assistantProfile,
+        wineryProfile: {
+          name: "Milea Estate",
+          location: "Pleasant Valley, NY",
+          description: "A boutique winery known for its handcrafted wines and personalized tasting experiences."
+        }
       }),
     });
 
@@ -72,7 +100,7 @@ export const sendMessageToClaude = async (scenario, messages) => {
       audio.play();
     }
 
-    return data.response;
+    return data.content || data.response;
   } catch (error) {
     console.error('Error sending message to Claude:', error);
     throw error;

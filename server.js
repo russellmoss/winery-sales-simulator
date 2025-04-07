@@ -4,21 +4,87 @@ const rateLimit = require('express-rate-limit');
 const dotenv = require('dotenv');
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
+const axios = require('axios');
 
 // Load environment variables
 dotenv.config();
+
+// Debug environment variables
+console.log('Environment variables loaded:');
+console.log('PORT:', process.env.PORT);
+console.log('CLAUDE_API_KEY exists:', !!process.env.CLAUDE_API_KEY);
+console.log('CLAUDE_API_KEY length:', process.env.CLAUDE_API_KEY ? process.env.CLAUDE_API_KEY.length : 0);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // Claude API configuration
 const CLAUDE_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-3-sonnet-20240229';
+const CLAUDE_MODEL = 'claude-3-opus-20240229';
 const CLAUDE_API_KEY = process.env.CLAUDE_API_KEY;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 2000; // 2 seconds
+
+// Store active conversations and their system messages
+const activeConversations = new Map();
+
+// Helper function to delay execution
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to make Claude API request with retries
+async function makeClaudeRequest(requestBody, retryCount = 0) {
+  try {
+    const response = await fetch(CLAUDE_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': CLAUDE_API_KEY,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Claude API error:", errorData);
+
+      // Check if it's an overload error and we haven't exceeded retries
+      if (response.status === 529 && retryCount < MAX_RETRIES) {
+        console.log(`Retrying request (attempt ${retryCount + 1} of ${MAX_RETRIES})...`);
+        await delay(RETRY_DELAY * (retryCount + 1)); // Exponential backoff
+        return makeClaudeRequest(requestBody, retryCount + 1);
+      }
+
+      throw new Error(`Claude API error: ${errorData.error?.message || 'Unknown error'}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    if (retryCount < MAX_RETRIES) {
+      console.log(`Retrying request (attempt ${retryCount + 1} of ${MAX_RETRIES})...`);
+      await delay(RETRY_DELAY * (retryCount + 1));
+      return makeClaudeRequest(requestBody, retryCount + 1);
+    }
+    throw error;
+  }
+}
+
+// Helper function to create system prompt
+function createSystemPrompt(scenario, customerProfile, assistantProfile, wineryProfile) {
+  const scenarioPrompt = createWineryScenarioSystemPrompt(scenario);
+  const customerPrompt = createCustomerSystemPrompt(customerProfile);
+  const assistantPrompt = createAssistantSystemPrompt(assistantProfile);
+  const wineryPrompt = createWinerySystemPrompt(wineryProfile);
+  
+  return `${scenarioPrompt}\n\n${customerPrompt}\n\n${assistantPrompt}\n\n${wineryPrompt}`;
+}
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Trust proxy for rate limiting
+app.set('trust proxy', 1);
 
 // Rate limiting
 const limiter = rateLimit({
@@ -44,29 +110,25 @@ app.use(usageTracking);
 // Claude API proxy endpoint
 app.post('/api/claude/message', async (req, res) => {
   try {
+    console.log('Received request to /api/claude/message');
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
+    
     // Check if API key is available
     if (!CLAUDE_API_KEY) {
+      console.error('Claude API key is missing');
       return res.status(500).json({ 
         error: 'Claude API key is missing. Please set the CLAUDE_API_KEY environment variable.' 
       });
     }
     
-    const { messages, scenario, customerProfile, assistantProfile, wineryProfile } = req.body;
+    const { messages, scenario, customerProfile, assistantProfile, wineryProfile, conversationId } = req.body;
     
     // Validate request
     if (!messages || !Array.isArray(messages)) {
+      console.error('Invalid request: messages array is required');
       return res.status(400).json({ error: 'Invalid request: messages array is required' });
     }
-    
-    // Create system prompts
-    const scenarioPrompt = createWineryScenarioSystemPrompt(scenario);
-    const customerPrompt = createCustomerSystemPrompt(customerProfile);
-    const assistantPrompt = createAssistantSystemPrompt(assistantProfile);
-    const wineryPrompt = createWinerySystemPrompt(wineryProfile);
-    
-    // Combine system prompts
-    const systemPrompt = `${scenarioPrompt}\n\n${customerPrompt}\n\n${assistantPrompt}\n\n${wineryPrompt}`;
-    
+
     // Format messages for Claude API - filter out any system messages
     const formattedMessages = messages
       .filter(msg => msg.role !== 'system')
@@ -77,6 +139,25 @@ app.post('/api/claude/message', async (req, res) => {
     
     console.log('Formatted messages for Claude:', JSON.stringify(formattedMessages, null, 2));
     
+    // Check if this is a new conversation or continuing an existing one
+    let systemPrompt;
+    if (!conversationId || !activeConversations.has(conversationId)) {
+      // New conversation - create and store system prompt
+      systemPrompt = createSystemPrompt(scenario, customerProfile, assistantProfile, wineryProfile);
+      const newConversationId = uuidv4();
+      activeConversations.set(newConversationId, {
+        systemPrompt,
+        lastActivity: Date.now()
+      });
+      console.log('Created new conversation:', newConversationId);
+    } else {
+      // Existing conversation - retrieve system prompt
+      const conversation = activeConversations.get(conversationId);
+      systemPrompt = conversation.systemPrompt;
+      conversation.lastActivity = Date.now();
+      console.log('Continuing conversation:', conversationId);
+    }
+    
     // Prepare request body
     const requestBody = {
       model: CLAUDE_MODEL,
@@ -86,40 +167,65 @@ app.post('/api/claude/message', async (req, res) => {
       system: systemPrompt
     };
     
-    // Send request to Claude API
-    const response = await fetch(CLAUDE_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': CLAUDE_API_KEY,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify(requestBody)
-    });
+    console.log('Request body for Claude API:', JSON.stringify(requestBody, null, 2));
     
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("Claude API error:", errorData);
-      return res.status(response.status).json({ 
-        error: `Claude API error: ${errorData.error?.message || 'Unknown error'}` 
-      });
-    }
+    // Send request to Claude API with retry mechanism
+    const data = await makeClaudeRequest(requestBody);
+    console.log('Claude API response data:', JSON.stringify(data, null, 2));
     
-    const data = await response.json();
-    
-    // Format response
+    // Initialize response object
     const formattedResponse = {
       id: uuidv4(),
       type: 'assistant',
       content: data.content[0].text,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      response: data.content[0].text,
+      conversationId: conversationId || activeConversations.keys().next().value
     };
+
+    // Try to convert text to speech using ElevenLabs if API key is available
+    if (process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
+      try {
+        const voiceId = process.env.ELEVENLABS_VOICE_ID;
+        const elevenLabsResponse = await axios.post(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+          {
+            text: data.content[0].text,
+            model_id: 'eleven_monolingual_v1',
+            voice_settings: {
+              stability: 0.5,
+              similarity_boost: 0.75
+            }
+          },
+          {
+            headers: {
+              'Accept': 'audio/mpeg',
+              'Content-Type': 'application/json',
+              'xi-api-key': process.env.ELEVENLABS_API_KEY
+            },
+            responseType: 'arraybuffer'
+          }
+        );
+        
+        // Add audio to response if successful
+        formattedResponse.audio = Buffer.from(elevenLabsResponse.data).toString('base64');
+      } catch (elevenLabsError) {
+        console.error('ElevenLabs API error:', elevenLabsError.message);
+        // Don't fail the request if ElevenLabs fails
+        formattedResponse.audioError = 'Text-to-speech conversion failed. Please check your ElevenLabs API key.';
+      }
+    } else {
+      console.log('ElevenLabs API key or voice ID not configured. Skipping text-to-speech.');
+    }
     
     // Return response
     res.json(formattedResponse);
   } catch (error) {
     console.error("Error in Claude API proxy:", error);
-    res.status(500).json({ error: error.message || 'Internal server error' });
+    res.status(500).json({ 
+      error: error.message || 'Internal server error',
+      details: error.stack
+    });
   }
 });
 
@@ -390,6 +496,19 @@ function extractSuggestions(feedback) {
   
   return suggestions;
 }
+
+// Cleanup old conversations periodically (every hour)
+setInterval(() => {
+  const now = Date.now();
+  const oneHourAgo = now - (60 * 60 * 1000);
+  
+  for (const [conversationId, conversation] of activeConversations.entries()) {
+    if (conversation.lastActivity < oneHourAgo) {
+      activeConversations.delete(conversationId);
+      console.log('Cleaned up old conversation:', conversationId);
+    }
+  }
+}, 60 * 60 * 1000);
 
 // Start server
 app.listen(PORT, () => {
