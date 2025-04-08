@@ -73,10 +73,8 @@ async function makeClaudeRequest(requestBody, retryCount = 0) {
 function createSystemPrompt(scenario, customerProfile, assistantProfile, wineryProfile) {
   const scenarioPrompt = createWineryScenarioSystemPrompt(scenario);
   const customerPrompt = createCustomerSystemPrompt(customerProfile);
-  const assistantPrompt = createAssistantSystemPrompt(assistantProfile);
-  const wineryPrompt = createWinerySystemPrompt(wineryProfile);
   
-  return `${scenarioPrompt}\n\n${customerPrompt}\n\n${assistantPrompt}\n\n${wineryPrompt}`;
+  return `${scenarioPrompt}\n\n${customerPrompt}`;
 }
 
 // Middleware
@@ -458,6 +456,11 @@ Time Available: ${customerProfile.timeAvailable || '1-2 hours'}
 Preferences: ${customerProfile.preferences || 'Interested in red wines, particularly Cabernet Sauvignon'}
 Occasion: ${customerProfile.occasion || 'Casual visit'}
 Group Size: ${customerProfile.groupSize || '2 people'}
+Name: ${customerProfile.name || 'Sarah'}
+Location: ${customerProfile.location || 'Pleasant Valley, NY'}
+Companion: ${customerProfile.companion || 'Michael (husband)'}
+Wine Preferences: ${customerProfile.winePreferences || 'Likes most wines but expresses distaste for at least one wine in the tasting flight'}
+Background: ${customerProfile.background || 'Local resident who doesn\'t mention where she lives unless asked'}
 
 Your role is to:
 1. Respond as a customer with the above profile
@@ -467,63 +470,10 @@ Your role is to:
 5. DO NOT evaluate the sales representative's performance
 6. DO NOT provide feedback during the conversation
 7. Only respond as you would in a real winery visit
+8. Express distaste for at least one wine in the tasting flight, but like the others
+9. Only mention where you live if specifically asked
 
 Remember: You are ONLY responding as a customer. Do not evaluate or provide feedback during the conversation.`;
-}
-
-function createAssistantSystemPrompt(assistantProfile) {
-  if (!assistantProfile) {
-    console.error("createAssistantSystemPrompt called with null or undefined assistantProfile");
-    return "You are a knowledgeable wine sales representative at a premium winery.";
-  }
-  
-  return `You are a knowledgeable wine sales representative at a premium winery with the following profile:
-
-Role: ${assistantProfile.role || 'Wine Sales Representative'}
-Experience: ${assistantProfile.experience || '5+ years in wine sales'}
-Knowledge Level: ${assistantProfile.knowledge || 'Expert in wine and winemaking'}
-Personality: ${assistantProfile.personality || 'Friendly, knowledgeable, and passionate about wine'}
-Sales Approach: ${assistantProfile.salesApproach || 'Consultative, focusing on customer needs and preferences'}
-Specialties: ${assistantProfile.specialties || 'Red wines, wine pairing, and wine club membership'}
-
-Your role is to:
-1. Respond as a wine sales representative with the above profile
-2. Provide knowledgeable information about wines, the winery, and winemaking
-3. Guide the customer through their wine experience
-4. Identify and address customer needs and preferences
-5. Make appropriate recommendations based on customer preferences
-6. Look for opportunities to suggest wine purchases or wine club membership
-7. Express emotions naturally based on the conversation flow
-
-Remember: You are ONLY responding as a wine sales representative. Do not evaluate or provide feedback during the conversation.`;
-}
-
-function createWinerySystemPrompt(wineryProfile) {
-  if (!wineryProfile) {
-    console.error("createWinerySystemPrompt called with null or undefined wineryProfile");
-    return "You are representing a premium winery with a focus on quality wines and customer experience.";
-  }
-  
-  return `You are representing the following winery:
-
-Name: ${wineryProfile.name || 'Vineyard Estates Winery'}
-Location: ${wineryProfile.location || 'Napa Valley, California'}
-History: ${wineryProfile.history || 'Family-owned since 1985, producing premium wines for over 35 years'}
-Philosophy: ${wineryProfile.philosophy || 'Focus on sustainable farming, minimal intervention winemaking, and expressing terroir'}
-Wine Style: ${wineryProfile.wineStyle || 'Elegant, balanced wines with a focus on varietal character'}
-Specialties: ${wineryProfile.specialties || 'Cabernet Sauvignon, Chardonnay, and Bordeaux blends'}
-Awards: ${wineryProfile.awards || 'Multiple gold medals at international wine competitions'}
-Facilities: ${wineryProfile.facilities || 'Tasting room, vineyard tours, and event spaces'}
-
-Your role is to:
-1. Represent this winery accurately in all conversations
-2. Share information about the winery's history, philosophy, and wine-making approach
-3. Highlight the winery's unique features and specialties
-4. Provide accurate information about the wines, vineyard, and production process
-5. Express the winery's values and commitment to quality
-6. Look for opportunities to promote the winery's products and services
-
-Remember: You are representing this specific winery. Ensure all information is consistent with the winery's profile.`;
 }
 
 function calculateScore(interaction) {

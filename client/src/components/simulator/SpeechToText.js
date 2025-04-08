@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 const SpeechToText = ({ onTranscriptComplete, autoStart }) => {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [hasRecorded, setHasRecorded] = useState(false);
   const recognitionRef = useRef(null);
 
   useEffect(() => {
@@ -62,6 +63,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart }) => {
     if (isListening) {
       recognitionRef.current.stop();
       setIsListening(false);
+      setHasRecorded(true);
     } else {
       setTranscript('');
       recognitionRef.current.start();
@@ -69,10 +71,11 @@ const SpeechToText = ({ onTranscriptComplete, autoStart }) => {
     }
   };
 
-  const handleSend = () => {
+  const handlePreview = () => {
     if (transcript.trim()) {
       onTranscriptComplete(transcript.trim());
       setTranscript('');
+      setHasRecorded(false);
     }
   };
 
@@ -86,64 +89,56 @@ const SpeechToText = ({ onTranscriptComplete, autoStart }) => {
           className={`record-button ${isListening ? 'recording' : ''}`}
           onClick={toggleListening}
         >
-          {isListening ? 'Stop Recording' : 'Start Recording'}
+          {isListening ? 'Stop Recording' : '1. Start Recording'}
         </button>
         <button 
-          className="send-button"
-          onClick={handleSend}
-          disabled={!transcript.trim()}
+          className="preview-button"
+          onClick={handlePreview}
+          disabled={!transcript.trim() || !hasRecorded}
         >
-          Send
+          2. Preview Transcription
         </button>
       </div>
       <style jsx>{`
         .speech-to-text-container {
-          margin: 10px 0;
-          padding: 10px;
-          border: 1px solid #ddd;
-          border-radius: 4px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          width: 100%;
         }
         .transcript-display {
-          min-height: 60px;
           padding: 10px;
-          margin-bottom: 10px;
-          border: 1px solid #eee;
+          border: 1px solid #ccc;
           border-radius: 4px;
-          background-color: #f9f9f9;
-          white-space: pre-wrap;
-          word-break: break-word;
+          min-height: 60px;
+          background: #f9f9f9;
         }
         .controls {
           display: flex;
           gap: 10px;
         }
-        .record-button, .send-button {
+        .record-button, .preview-button {
           padding: 8px 16px;
-          border: none;
           border-radius: 4px;
+          border: none;
           cursor: pointer;
           font-weight: bold;
+          transition: all 0.2s;
         }
         .record-button {
-          background-color: #e74c3c;
+          background-color: #dc3545;
           color: white;
         }
         .record-button.recording {
-          background-color: #c0392b;
-          animation: pulse 1.5s infinite;
+          background-color: #28a745;
         }
-        .send-button {
-          background-color: #2ecc71;
+        .preview-button {
+          background-color: #007bff;
           color: white;
         }
-        .send-button:disabled {
-          background-color: #95a5a6;
+        .preview-button:disabled {
+          background-color: #ccc;
           cursor: not-allowed;
-        }
-        @keyframes pulse {
-          0% { opacity: 1; }
-          50% { opacity: 0.5; }
-          100% { opacity: 1; }
         }
       `}</style>
     </div>

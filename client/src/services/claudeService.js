@@ -52,7 +52,12 @@ export const sendMessageToClaude = async (scenario, messages) => {
       timeAvailable: '1-2 hours',
       preferences: scenario.clientPersonality?.preferences || 'Interested in red wines',
       occasion: 'First visit',
-      groupSize: '2 people'
+      groupSize: '2 people',
+      name: 'Sarah',
+      location: 'Pleasant Valley, NY',
+      companion: 'Michael (husband)',
+      winePreferences: 'Likes most wines but expresses distaste for at least one wine in the tasting flight',
+      background: 'Local resident who doesn\'t mention where she lives unless asked'
     };
 
     // Format assistant profile
@@ -78,7 +83,13 @@ export const sendMessageToClaude = async (scenario, messages) => {
         wineryProfile: {
           name: "Milea Estate",
           location: "Pleasant Valley, NY",
-          description: "A boutique winery known for its handcrafted wines and personalized tasting experiences."
+          description: "A boutique winery known for its handcrafted wines and personalized tasting experiences.",
+          history: "Established in 2015, producing premium wines for nearly a decade",
+          philosophy: "Focus on sustainable farming, minimal intervention winemaking, and expressing terroir",
+          wineStyle: "Elegant, balanced wines with a focus on varietal character",
+          specialties: "Cabernet Franc, Hudson Valley Vineyards traditional method sparkling wines, and Farmhouse Chardonnay",
+          awards: "Multiple gold medals at international wine competitions",
+          facilities: "Tasting room, vineyard tours, and event spaces"
         }
       }),
     });

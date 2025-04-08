@@ -66,8 +66,33 @@ function SimulatorChat() {
 
   const handleEndSimulation = () => {
     if (window.confirm('Are you sure you want to end this simulation?')) {
-      // Navigate to evaluation page
-      window.location.href = `/simulator/${scenarioId}/evaluation`;
+      // Export conversation as markdown
+      let markdown = `# Wine Tasting Room Conversation\n\n`;
+      markdown += `## Scenario: ${currentScenario.title}\n\n`;
+      markdown += `**Description:** ${currentScenario.description}\n\n`;
+      markdown += `**Date:** ${new Date().toLocaleString()}\n\n`;
+      markdown += `## Conversation\n\n`;
+
+      // Add each interaction to the markdown
+      interactions.forEach((interaction, index) => {
+        const role = interaction.role === 'user' ? 'Staff Member' : 'Guest';
+        markdown += `### ${role} (${index + 1})\n\n`;
+        markdown += `${interaction.message}\n\n`;
+      });
+
+      // Create and download the file
+      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `wine-tasting-conversation-${new Date().toISOString().slice(0, 10)}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      // Navigate to home page
+      window.location.href = '/simulator';
     }
   };
 
@@ -169,7 +194,7 @@ function SimulatorChat() {
             disabled={!message.trim() || isLoading}
             className="send-button"
           >
-            {isLoading ? 'Sending...' : 'Send'}
+            {isLoading ? 'Sending...' : '3. Send'}
           </button>
         </div>
       </div>
@@ -262,16 +287,17 @@ function SimulatorChat() {
           margin-top: 10px;
         }
         .send-button {
-          padding: 10px 20px;
-          background: #007bff;
+          padding: 8px 16px;
+          border-radius: 4px;
+          background-color: #28a745;
           color: white;
           border: none;
-          border-radius: 4px;
           cursor: pointer;
           font-weight: bold;
+          transition: all 0.2s;
         }
         .send-button:disabled {
-          background: #ccc;
+          background-color: #ccc;
           cursor: not-allowed;
         }
         .typing-indicator {
