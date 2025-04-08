@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
-import { sendMessageToClaude } from '../../services/claudeService';
+import { sendMessageToClaude, toggleMute, getMuteState, setMuteState } from '../../services/claudeService';
 import SpeechToText from './SpeechToText';
 
 function SimulatorChat() {
@@ -11,6 +11,7 @@ function SimulatorChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState(null);
   const [shouldStartRecording, setShouldStartRecording] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const messagesEndRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -21,6 +22,23 @@ function SimulatorChat() {
   useEffect(() => {
     scrollToBottom();
   }, [interactions]);
+
+  // Initialize audio state on component mount
+  useEffect(() => {
+    // Set initial mute state to unmuted
+    setMuteState(false);
+    setIsMuted(false);
+    
+    // Set up interval to check for changes
+    const interval = setInterval(() => {
+      const currentMuteState = getMuteState();
+      if (currentMuteState !== isMuted) {
+        setIsMuted(currentMuteState);
+      }
+    }, 500);
+    
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -43,24 +61,18 @@ function SimulatorChat() {
       // Add Claude's response to interactions
       await addInteraction(response, 'assistant');
 
-      // Create and play audio if available
-      if (response.audio) {
-        const audioBlob = new Blob(
-          [Uint8Array.from(atob(response.audio), c => c.charCodeAt(0))],
-          { type: 'audio/mpeg' }
-        );
-        const audioUrl = URL.createObjectURL(audioBlob);
-        if (audioRef.current) {
-          audioRef.current.src = audioUrl;
-          audioRef.current.play();
-        }
-      }
+      // Audio will be handled by the service
     } catch (err) {
       setChatError(err.message);
     } finally {
       setIsTyping(false);
       setIsLoading(false);
     }
+  };
+
+  const handleToggleMute = () => {
+    const newMuteState = toggleMute();
+    setIsMuted(newMuteState);
   };
 
   const handleEndSimulation = () => {
@@ -82,16 +94,26 @@ function SimulatorChat() {
       // Create and download the file
       const blob = new Blob([markdown], { type: 'text/markdown' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `wine-tasting-conversation-${new Date().toISOString().slice(0, 10)}.md`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      
+      // Create a temporary link element
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `wine-tasting-conversation-${new Date().toISOString().slice(0, 10)}.md`;
+      
+      // For mobile devices, we need to append the link to the document
+      document.body.appendChild(link);
+      
+      // Trigger the download
+      link.click();
+      
+      // Clean up
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      // Navigate to home page
-      window.location.href = '/';
+      // Navigate to home page after a short delay to ensure download starts
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 1000);
     }
   };
 
@@ -176,6 +198,15 @@ function SimulatorChat() {
       {chatError && (
         <div className="error-message">{chatError}</div>
       )}
+
+      <div className="audio-controls">
+        <button 
+          onClick={handleToggleMute}
+          className={`mute-button ${isMuted ? 'muted' : 'unmuted'}`}
+        >
+          {isMuted ? '🔇 Unmute' : '🔊 Mute'}
+        </button>
+      </div>
 
       <div className="chat-input-container">
         <textarea
@@ -311,6 +342,34 @@ function SimulatorChat() {
           background: #f8d7da;
           border-radius: 4px;
           margin-bottom: 10px;
+        }
+        .audio-controls {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 15px;
+        }
+        .mute-button {
+          padding: 10px 20px;
+          border-radius: 4px;
+          font-weight: bold;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 16px;
+          border: none;
+          transition: all 0.2s;
+        }
+        .mute-button.muted {
+          background-color: #6c757d;
+          color: white;
+        }
+        .mute-button.unmuted {
+          background-color: #28a745;
+          color: white;
+        }
+        .mute-button:hover {
+          opacity: 0.9;
         }
       `}</style>
     </div>

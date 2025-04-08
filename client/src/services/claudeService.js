@@ -44,6 +44,93 @@ const formatMessages = (messages) => {
   return formatted;
 };
 
+// Create a global audio context for better mobile compatibility
+let audioQueue = [];
+let isPlaying = false;
+let audioElement = null;
+let isMuted = false; // Start unmuted
+
+// Function to toggle mute state
+export const toggleMute = () => {
+  isMuted = !isMuted;
+  
+  if (audioElement) {
+    audioElement.muted = isMuted;
+    
+    // If unmuting, try to play the audio
+    if (!isMuted) {
+      audioElement.play().catch(error => {
+        console.error('Error playing audio:', error);
+        // Don't reset mute state on error, just log it
+      });
+    }
+  }
+  
+  return isMuted;
+};
+
+// Function to get current mute state
+export const getMuteState = () => {
+  return isMuted;
+};
+
+// Function to set mute state
+export const setMuteState = (muted) => {
+  isMuted = muted;
+  
+  if (audioElement) {
+    audioElement.muted = isMuted;
+  }
+  
+  return isMuted;
+};
+
+const playNextInQueue = async () => {
+  if (audioQueue.length === 0) {
+    isPlaying = false;
+    return;
+  }
+  
+  try {
+    isPlaying = true;
+    const audioData = audioQueue.shift();
+    
+    // Create a new audio element for each playback
+    audioElement = new Audio(`data:audio/mpeg;base64,${audioData}`);
+    
+    // Set initial mute state
+    audioElement.muted = isMuted;
+    
+    // Add event listeners
+    audioElement.addEventListener('play', () => {
+      console.log('Audio started playing');
+    });
+    
+    audioElement.addEventListener('ended', () => {
+      console.log('Audio playback ended');
+      playNextInQueue();
+    });
+    
+    audioElement.addEventListener('error', (e) => {
+      console.error('Audio playback error:', e);
+      playNextInQueue();
+    });
+    
+    // Try to play immediately if not muted
+    if (!isMuted) {
+      try {
+        await audioElement.play();
+      } catch (error) {
+        console.error('Error playing audio:', error);
+        // Don't reset mute state on error, just log it
+      }
+    }
+  } catch (error) {
+    console.error('Error in playNextInQueue:', error);
+    playNextInQueue();
+  }
+};
+
 export const sendMessageToClaude = async (scenario, messages) => {
   try {
     console.log('Sending message to Claude with scenario:', JSON.stringify(scenario, null, 2));
@@ -74,11 +161,14 @@ export const sendMessageToClaude = async (scenario, messages) => {
     // Check if we have audio data
     if (data.audio) {
       console.log('Audio data received, length:', data.audio.length);
-      // Create an audio element and play it
-      const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
-      audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-      });
+      
+      // Add to queue
+      audioQueue.push(data.audio);
+      
+      // Start playing if not already playing
+      if (!isPlaying) {
+        playNextInQueue();
+      }
     }
     
     return data.message;
