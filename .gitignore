@@ -62,3 +62,6 @@ server/.env.local
 server/.env.development.local
 server/.env.test.local
 server/.env.production.local
+
+# Local Netlify folder
+.netlify

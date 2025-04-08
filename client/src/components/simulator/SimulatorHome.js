@@ -74,7 +74,7 @@ function SimulatorHome() {
               
               <div className="scenario-actions">
                 <Link 
-                  to={`/simulator/${scenario.id}/brief`} 
+                  to={`/${scenario.id}/brief`} 
                   className="start-button"
                 >
                   Start Scenario

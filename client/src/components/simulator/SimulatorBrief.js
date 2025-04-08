@@ -79,7 +79,7 @@ function SimulatorBrief() {
 
       <div className="brief-actions">
         <Link
-          to={`/simulator/${scenarioId}/chat`}
+          to={`/${scenarioId}/chat`}
           className="btn btn-primary"
         >
           Start Conversation

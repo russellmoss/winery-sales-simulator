@@ -92,7 +92,7 @@ function SimulatorChat() {
       URL.revokeObjectURL(url);
 
       // Navigate to home page
-      window.location.href = '/simulator';
+      window.location.href = '/';
     }
   };
 

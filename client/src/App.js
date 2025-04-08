@@ -1,10 +1,9 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { SimulatorProvider } from './contexts/SimulatorContext';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import SimulatorHome from './components/simulator/SimulatorHome';
 import SimulatorBrief from './components/simulator/SimulatorBrief';
 import SimulatorChat from './components/simulator/SimulatorChat';
-import RubricEvaluation from './components/simulator/RubricEvaluation';
+import { SimulatorProvider } from './contexts/SimulatorContext';
 import ClaudeTest from './components/test/ClaudeTest';
 import './App.css';
 
@@ -26,23 +25,24 @@ function App() {
           <div className="container">
             <Routes>
               <Route path="/" element={<SimulatorHome />} />
-              <Route path="/simulator/:scenarioId/brief" element={
-                <SimulatorProvider>
-                  <SimulatorBrief />
-                </SimulatorProvider>
-              } />
-              <Route path="/simulator/:scenarioId/chat" element={
-                <SimulatorProvider>
-                  <SimulatorChat />
-                </SimulatorProvider>
-              } />
-              <Route path="/simulator/:scenarioId/evaluation" element={
-                <SimulatorProvider>
-                  <RubricEvaluation />
-                </SimulatorProvider>
-              } />
+              <Route
+                path="/:scenarioId/brief"
+                element={
+                  <SimulatorProvider>
+                    <SimulatorBrief />
+                  </SimulatorProvider>
+                }
+              />
+              <Route
+                path="/:scenarioId/chat"
+                element={
+                  <SimulatorProvider>
+                    <SimulatorChat />
+                  </SimulatorProvider>
+                }
+              />
               <Route path="/test/claude" element={<ClaudeTest />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
+              <Route path="*" element={<SimulatorHome />} />
             </Routes>
           </div>
         </main>

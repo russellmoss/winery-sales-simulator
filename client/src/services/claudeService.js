@@ -1,6 +1,7 @@
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_URL = '/.netlify/functions/claude';
 
 const createSystemPrompt = (scenario) => {
+  console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
   return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character:
 
 Title: ${scenario.title}
@@ -17,6 +18,7 @@ Please respond to the wine tasting room staff member's messages in character, ba
 };
 
 const createAssistantPrompt = (scenario) => {
+  console.log('Creating assistant prompt with scenario:', JSON.stringify(scenario, null, 2));
   return `You are a wine tasting room staff member in a sales simulation scenario. Here are the details of your role:
 
 Title: ${scenario.title}
@@ -44,101 +46,45 @@ const formatMessages = (messages) => {
 
 export const sendMessageToClaude = async (scenario, messages) => {
   try {
-    // Format customer profile
-    const customerProfile = {
-      knowledge: scenario.clientPersonality?.knowledge || 'Beginner',
-      budget: scenario.clientPersonality?.budget || 'Moderate',
-      interest: 'High',
-      timeAvailable: '1-2 hours',
-      preferences: scenario.clientPersonality?.preferences || 'Interested in red wines',
-      occasion: 'First visit',
-      groupSize: '2 people',
-      name: 'Sarah',
-      location: 'Pleasant Valley, NY',
-      companion: 'Michael (husband)',
-      winePreferences: 'Likes most wines but expresses distaste for at least one wine in the tasting flight',
-      background: 'Local resident who doesn\'t mention where she lives unless asked'
-    };
-
-    // Format assistant profile
-    const assistantProfile = {
-      role: scenario.assistantRole || 'Wine Tasting Room Associate',
-      experience: '3+ years in wine sales',
-      knowledge: 'Expert in wine and winemaking',
-      personality: 'Friendly, knowledgeable, and passionate about wine',
-      salesApproach: 'Consultative, focusing on customer needs and preferences',
-      specialties: 'Red wines, wine pairing, and wine club membership'
-    };
-
-    const response = await fetch(`${API_BASE_URL}/claude/message`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        messages: formatMessages(messages),
-        scenario: scenario,
-        customerProfile: customerProfile,
-        assistantProfile: assistantProfile,
-        wineryProfile: {
-          name: "Milea Estate",
-          location: "Pleasant Valley, NY",
-          description: "A boutique winery known for its handcrafted wines and personalized tasting experiences.",
-          history: "Established in 2015, producing premium wines for nearly a decade",
-          philosophy: "Focus on sustainable farming, minimal intervention winemaking, and expressing terroir",
-          wineStyle: "Elegant, balanced wines with a focus on varietal character",
-          specialties: "Cabernet Franc, Hudson Valley Vineyards traditional method sparkling wines, and Farmhouse Chardonnay",
-          awards: "Multiple gold medals at international wine competitions",
-          facilities: "Tasting room, vineyard tours, and event spaces"
-        }
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-
-    const data = await response.json();
+    console.log('Sending message to Claude with scenario:', JSON.stringify(scenario, null, 2));
+    console.log('Messages to send:', JSON.stringify(messages, null, 2));
     
-    // Create and play audio if available
-    if (data.audio) {
-      const audioBlob = new Blob(
-        [Uint8Array.from(atob(data.audio), c => c.charCodeAt(0))],
-        { type: 'audio/mpeg' }
-      );
-      const audioUrl = URL.createObjectURL(audioBlob);
-      const audio = new Audio(audioUrl);
-      audio.play();
-    }
-
-    return data.content || data.response;
-  } catch (error) {
-    console.error('Error sending message to Claude:', error);
-    throw error;
-  }
-};
-
-export const analyzeResponse = async (scenario, messages) => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/claude/analyze`, {
+    const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         scenario,
-        messages: formatMessages(messages)
+        messages
       }),
     });
 
+    console.log('Response status:', response.status);
+    
     if (!response.ok) {
-      throw new Error('Failed to analyze response');
+      const errorData = await response.json();
+      console.error('Error response data:', errorData);
+      throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
-    return data.analysis;
+    console.log('Response data:', data);
+    
+    // Check if we have audio data
+    if (data.audio) {
+      console.log('Audio data received, length:', data.audio.length);
+      // Create an audio element and play it
+      const audio = new Audio(`data:audio/mpeg;base64,${data.audio}`);
+      audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
+    }
+    
+    return data.message;
   } catch (error) {
-    console.error('Error analyzing response:', error);
+    console.error('Error sending message to Claude:', error);
+    console.error('Error stack:', error.stack);
     throw error;
   }
 }; 
