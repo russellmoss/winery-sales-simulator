@@ -4,7 +4,7 @@ import SimulatorHome from './components/simulator/SimulatorHome';
 import SimulatorBrief from './components/simulator/SimulatorBrief';
 import SimulatorChat from './components/simulator/SimulatorChat';
 import { SimulatorProvider } from './contexts/SimulatorContext';
-import ClaudeTest from './components/test/ClaudeTest';
+import Evaluator from './components/Evaluator';
 import './App.css';
 
 function App() {
@@ -16,7 +16,7 @@ function App() {
             <a href="/" className="logo">Winery Sales Simulator</a>
             <nav className="nav-links">
               <a href="/" className="nav-link">Home</a>
-              <a href="/test/claude" className="nav-link">Test Claude</a>
+              <a href="/evaluator" className="nav-link">Evaluator</a>
             </nav>
           </div>
         </header>
@@ -41,7 +41,7 @@ function App() {
                   </SimulatorProvider>
                 }
               />
-              <Route path="/test/claude" element={<ClaudeTest />} />
+              <Route path="/evaluator" element={<Evaluator />} />
               <Route path="*" element={<SimulatorHome />} />
             </Routes>
           </div>

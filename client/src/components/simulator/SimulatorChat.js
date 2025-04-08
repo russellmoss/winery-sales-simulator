@@ -1,12 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude } from '../../services/claudeService';
 import SpeechToText from './SpeechToText';
 
 function SimulatorChat() {
   const { currentScenario, interactions, addInteraction, loading, error } = useSimulator();
-  const { scenarioId } = useParams();
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
