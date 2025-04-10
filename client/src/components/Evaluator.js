@@ -38,6 +38,19 @@ Your evaluation should be thorough, fair, and actionable while maintaining the e
     <div className="evaluator-container">
       <h1>Evaluator Instructions</h1>
       
+      <div className="enhanced-evaluator-section">
+        <p className="enhanced-title">Use the Enhanced Evaluator</p>
+        <a 
+          href="https://wine-sales-evaluator.onrender.com/" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="enhanced-button"
+        >
+          Enhanced Evaluator
+        </a>
+        <p className="fallback-text">If you have issues with the Enhanced Evaluator, follow the instructions below</p>
+      </div>
+
       <div className="instruction-section">
         <p>Take the conversation markdown and go to the Claude evaluation project:</p>
         <a 
@@ -86,6 +99,45 @@ Your evaluation should be thorough, fair, and actionable while maintaining the e
           max-width: 800px;
           margin: 0 auto;
           padding: 2rem;
+        }
+
+        .enhanced-evaluator-section {
+          margin: 2rem 0;
+          padding: 1.5rem;
+          background-color: #f0f7ff;
+          border-radius: 8px;
+          border: 1px solid #cce5ff;
+        }
+
+        .enhanced-title {
+          font-size: 1.2rem;
+          font-weight: 600;
+          color: #004085;
+          margin-bottom: 1rem;
+        }
+
+        .enhanced-button {
+          display: inline-block;
+          background-color: #6610f2;
+          color: white;
+          padding: 0.75rem 1.5rem;
+          border-radius: 4px;
+          text-decoration: none;
+          margin: 1rem 0;
+          transition: background-color 0.2s;
+          font-weight: 500;
+        }
+
+        .enhanced-button:hover {
+          background-color: #520dc2;
+        }
+
+        .fallback-text {
+          color: #856404;
+          background-color: #fff3cd;
+          padding: 0.75rem;
+          border-radius: 4px;
+          margin-top: 1rem;
         }
 
         .instruction-section {
