@@ -2,16 +2,20 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /scenarios/{scenarioId} {
-      allow read: if true;  // Allow reading scenarios
-      allow write: if false; // Prevent writing for now
-      
-      match /interactions/{interactionId} {
-        allow read, write: if true;  // Allow access to interactions
-      }
-      
-      match /evaluations/{evaluationId} {
-        allow read, write: if true;  // Allow access to evaluations
-      }
+      allow read: if true;
+      allow write: if false;  // Disable writing to scenarios
+    }
+    
+    match /interactions/{interactionId} {
+      allow read, write: if true;  // Allow interactions without auth for now
+    }
+    
+    match /evaluations/{evaluationId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
     match /{document=**} {

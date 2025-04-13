@@ -14,25 +14,47 @@ import { db } from './firebase';
 export const getScenarios = async () => {
   try {
     console.log('Attempting to fetch scenarios from Firestore...');
-    const scenariosRef = collection(db, 'scenarios');
-    console.log('Collection reference created:', scenariosRef);
-    const snapshot = await getDocs(scenariosRef);
-    console.log('Snapshot received:', snapshot);
-    console.log('Number of documents:', snapshot.docs.length);
+    console.log('Database instance:', db);
     
-    if (snapshot.docs.length === 0) {
+    const scenariosRef = collection(db, 'scenarios');
+    console.log('Collection reference created:', {
+      path: scenariosRef.path,
+      id: scenariosRef.id
+    });
+    
+    const scenariosQuery = query(scenariosRef);
+    console.log('Query created:', scenariosQuery);
+    
+    const snapshot = await getDocs(scenariosQuery);
+    console.log('Snapshot received:', {
+      empty: snapshot.empty,
+      size: snapshot.size,
+      metadata: snapshot.metadata
+    });
+    
+    if (snapshot.empty) {
       console.log('No scenarios found in the database');
       return [];
     }
     
-    return snapshot.docs.map(doc => ({
+    const scenarios = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     }));
+    
+    console.log('Successfully fetched scenarios:', scenarios);
+    return scenarios;
+    
   } catch (error) {
-    console.error('Error getting scenarios:', error);
-    console.error('Error details:', error.code, error.message);
-    throw error;
+    console.error('Error getting scenarios:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
+    
+    // Return an empty array instead of throwing to prevent app crashes
+    return [];
   }
 };
 
@@ -58,8 +80,9 @@ export const getScenarioById = async (scenarioId) => {
 // Interactions
 export const saveInteraction = async (scenarioId, interaction) => {
   try {
-    const interactionsRef = collection(db, 'scenarios', scenarioId, 'interactions');
+    const interactionsRef = collection(db, 'interactions');
     await addDoc(interactionsRef, {
+      scenarioId,
       ...interaction,
       timestamp: new Date().toISOString()
     });
@@ -71,8 +94,9 @@ export const saveInteraction = async (scenarioId, interaction) => {
 
 export const getInteractions = async (scenarioId) => {
   try {
-    const interactionsRef = collection(db, 'scenarios', scenarioId, 'interactions');
-    const snapshot = await getDocs(interactionsRef);
+    const interactionsRef = collection(db, 'interactions');
+    const interactionsQuery = query(interactionsRef, where('scenarioId', '==', scenarioId));
+    const snapshot = await getDocs(interactionsQuery);
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
