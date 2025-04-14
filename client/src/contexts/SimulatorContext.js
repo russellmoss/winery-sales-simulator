@@ -70,27 +70,16 @@ export function SimulatorProvider({ children }) {
     try {
       console.log('Adding new interaction:', { scenarioId, role, messageLength: message.length });
       
-      // Optimistically update the UI
-      setInteractions(prev => [...prev, newInteraction]);
-      
-      // Save to Firestore
+      // Save to Firestore first
       const interactionId = await saveInteraction(scenarioId, newInteraction);
       console.log('Interaction saved successfully with ID:', interactionId);
       
-      // Update the local state with the ID
-      setInteractions(prev => prev.map(interaction => 
-        interaction === newInteraction 
-          ? { ...interaction, id: interactionId }
-          : interaction
-      ));
+      // Update state once with the complete interaction including ID
+      setInteractions(prev => [...prev, { ...newInteraction, id: interactionId }]);
 
       return interactionId;
     } catch (err) {
       console.error('Error adding interaction:', err);
-      
-      // Revert the optimistic update on error
-      setInteractions(prev => prev.filter(interaction => interaction !== newInteraction));
-      
       setError(err.message || 'Failed to save interaction');
       throw err; // Re-throw to allow handling by the caller
     }

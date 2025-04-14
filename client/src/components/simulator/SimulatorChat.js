@@ -148,15 +148,9 @@ function SimulatorChat() {
           firstFewWords: responseMessage.split(' ').slice(0, 5).join(' ') + '...'
         });
 
-        // Update local state first for immediate feedback
-        setInteractions(prev => [...prev, {
-          message: responseMessage,
-          role: 'assistant',
-          timestamp: new Date().toISOString()
-        }]);
-
-        // Then try to save to Firestore
+        // Only use addInteraction to update the state
         await addInteraction(responseMessage, 'assistant');
+        
       } catch (err) {
         console.error('Failed to save Claude response to Firestore:', {
           error: err,
