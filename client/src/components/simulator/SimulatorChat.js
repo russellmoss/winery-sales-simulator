@@ -97,9 +97,13 @@ function SimulatorChat() {
         firstFewWords: response?.split(' ').slice(0, 5).join(' ') + '...'
       });
 
-      // Add Claude's response
+      // Add Claude's response - ensure we're passing a string message
       try {
-        await addInteraction(response, 'assistant');
+        const responseMessage = typeof response === 'string' ? response : response.response || response.message || '';
+        if (!responseMessage) {
+          throw new Error('Invalid response format from Claude');
+        }
+        await addInteraction(responseMessage, 'assistant');
       } catch (err) {
         console.error('Failed to save Claude response to Firestore:', err);
         setChatError('The response was received but could not be saved to the database. The conversation will continue in-memory only.');
