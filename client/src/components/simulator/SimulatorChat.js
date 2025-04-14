@@ -3,15 +3,24 @@ import { useParams } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { sendMessageToClaude, toggleMute, getMuteState, setMuteState } from '../../services/claudeService';
 import SpeechToText from './SpeechToText';
+import InteractionTest from './InteractionTest';
 
 function SimulatorChat() {
-  const { currentScenario, interactions, addInteraction, loading, error } = useSimulator();
+  const { 
+    currentScenario, 
+    interactions, 
+    addInteraction, 
+    loading, 
+    error,
+    setInteractions
+  } = useSimulator();
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState(null);
   const [shouldStartRecording, setShouldStartRecording] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [showTestPanel, setShowTestPanel] = useState(false);
   const messagesEndRef = useRef(null);
   const audioRef = useRef(null);
 
@@ -44,30 +53,157 @@ function SimulatorChat() {
     e.preventDefault();
     if (!message.trim()) return;
 
+    console.log('Starting to send message:', {
+      messageLength: message.length,
+      scenarioId: currentScenario?.id,
+      interactionsCount: interactions.length
+    });
+
     setIsLoading(true);
     setChatError(null);
+    
+    // Store the current message and clear input immediately for better UX
+    const currentUserMessage = message;
+    setMessage('');
 
     try {
-      // Add user message to interactions
-      await addInteraction(message, 'user');
+      console.log('Adding user message to Firestore...');
+      // Add user message and handle any errors
+      try {
+        await addInteraction(currentUserMessage, 'user');
+      } catch (err) {
+        console.error('Failed to save user message to Firestore:', err);
+        setChatError('Your message was sent but could not be saved to the database. The conversation will continue in-memory only.');
+      }
+      
       setIsTyping(true);
+
+      console.log('Getting response from Claude...', {
+        currentScenario: {
+          id: currentScenario?.id,
+          title: currentScenario?.title
+        },
+        interactionsCount: interactions.length
+      });
 
       // Get response from Claude
       const response = await sendMessageToClaude(
         currentScenario,
-        [...interactions, { message: message, role: 'user' }]
+        [...interactions, { message: currentUserMessage, role: 'user' }]
       );
 
-      // Add Claude's response to interactions
-      await addInteraction(response, 'assistant');
+      console.log('Received response from Claude:', {
+        responseLength: response?.length,
+        firstFewWords: response?.split(' ').slice(0, 5).join(' ') + '...'
+      });
 
-      // Audio will be handled by the service
+      // Add Claude's response
+      try {
+        await addInteraction(response, 'assistant');
+      } catch (err) {
+        console.error('Failed to save Claude response to Firestore:', err);
+        setChatError('The response was received but could not be saved to the database. The conversation will continue in-memory only.');
+      }
+
     } catch (err) {
-      setChatError(err.message);
+      console.error('Error in handleSendMessage:', {
+        error: err,
+        errorName: err.name,
+        errorMessage: err.message,
+        errorStack: err.stack,
+        state: {
+          isLoading,
+          isTyping,
+          hasError: !!chatError,
+          interactionsCount: interactions.length
+        }
+      });
+
+      // Show error but don't clear the conversation
+      setChatError(`Error: ${err.message}. The conversation will continue but some messages may not be saved.`);
     } finally {
       setIsTyping(false);
       setIsLoading(false);
+      console.log('Message sending process completed', {
+        finalState: {
+          isLoading: false,
+          isTyping: false,
+          hasError: !!chatError,
+          interactionsCount: interactions.length
+        }
+      });
     }
+  };
+
+  // Add a recovery function for retrying failed saves
+  const retryFailedInteractions = async (failedInteractions) => {
+    console.log('Attempting to recover failed interactions:', failedInteractions);
+    
+    for (const interaction of failedInteractions) {
+      try {
+        await addInteraction(interaction.message, interaction.role);
+        console.log('Successfully recovered interaction:', interaction);
+      } catch (err) {
+        console.error('Failed to recover interaction:', err);
+      }
+    }
+  };
+
+  // Add an effect to handle connection status
+  useEffect(() => {
+    let failedInteractions = [];
+    
+    const handleOnline = () => {
+      console.log('Connection restored. Attempting to recover failed interactions...');
+      if (failedInteractions.length > 0) {
+        retryFailedInteractions(failedInteractions);
+        failedInteractions = [];
+      }
+    };
+
+    const handleOffline = () => {
+      console.log('Connection lost. Interactions will be saved locally until connection is restored.');
+      setChatError('You are currently offline. Messages will be saved when connection is restored.');
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Add error display component
+  const ErrorDisplay = ({ error }) => {
+    if (!error) return null;
+    
+    return (
+      <div className="error-banner" style={{
+        padding: '10px',
+        marginBottom: '10px',
+        backgroundColor: '#fff3cd',
+        color: '#856404',
+        borderRadius: '4px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <span>⚠️ {error}</span>
+        <button 
+          onClick={() => setChatError(null)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '0 5px'
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    );
   };
 
   const handleToggleMute = () => {
@@ -175,8 +311,22 @@ function SimulatorChat() {
           <button onClick={handleEndSimulation} className="btn btn-secondary">
             End Simulation
           </button>
+          {process.env.NODE_ENV === 'development' && (
+            <button 
+              onClick={() => setShowTestPanel(!showTestPanel)} 
+              className="btn btn-info"
+            >
+              {showTestPanel ? 'Hide Test Panel' : 'Show Test Panel'}
+            </button>
+          )}
         </div>
       </div>
+
+      {process.env.NODE_ENV === 'development' && showTestPanel && (
+        <div className="test-panel">
+          <InteractionTest />
+        </div>
+      )}
 
       <div className="chat-messages">
         {interactions.map((interaction, index) => (
@@ -195,9 +345,7 @@ function SimulatorChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {chatError && (
-        <div className="error-message">{chatError}</div>
-      )}
+      <ErrorDisplay error={chatError} />
 
       <div className="audio-controls">
         <button 

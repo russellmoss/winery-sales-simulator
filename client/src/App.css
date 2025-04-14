@@ -27,6 +27,7 @@
 .nav-links {
   display: flex;
   gap: 1rem;
+  align-items: center;
 }
 
 .nav-link {
@@ -35,6 +36,8 @@
   padding: 0.5rem 1rem;
   border-radius: 4px;
   transition: background-color 0.3s ease;
+  display: flex;
+  align-items: center;
 }
 
 .nav-link:hover {

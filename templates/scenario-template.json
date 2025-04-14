@@ -1,0 +1,64 @@
+{
+  "title": "New Scenario Title",
+  "description": "A detailed description of this scenario...",
+  "difficulty": "Beginner",
+  "wineryInfo": {
+    "name": "Example Winery",
+    "location": "Example Location, NY",
+    "specialties": ["Riesling", "Cabernet Franc"],
+    "uniqueFeatures": ["Sustainable farming", "Family owned since 1985"]
+  },
+  "customerProfile": {
+    "names": ["Jane Smith", "John Smith"],
+    "homeLocation": "Rochester, NY",
+    "occupation": "Tech professionals",
+    "visitReason": "Weekend getaway, interested in wine education"
+  },
+  "clientPersonality": {
+    "knowledgeLevel": "Beginner",
+    "budget": "Moderate",
+    "traits": [
+      "Wine enthusiast",
+      "Social",
+      "Curious"
+    ],
+    "preferences": {
+      "favoriteWines": ["Sweet whites", "Light reds"],
+      "dislikes": ["Heavy tannins", "Oaky flavors"],
+      "interests": ["Food pairing", "Wine making process"]
+    }
+  },
+  "behavioralInstructions": {
+    "generalBehavior": [
+      "Ask questions about the wine-making process",
+      "Show interest in wine club membership",
+      "Express preference for sweeter wines"
+    ],
+    "tastingBehavior": [
+      "Request a wine flight when offered",
+      "Ask one question about each wine's production",
+      "Express dislike for at least one wine",
+      "Show enthusiasm for favorite wines"
+    ],
+    "purchaseIntentions": [
+      "Consider buying wines for an upcoming dinner party",
+      "Express interest in wine club if benefits are well explained",
+      "Ask about shipping options"
+    ]
+  },
+  "funnelStage": "awareness",
+  "objectives": [
+    "Learn about wine tasting techniques",
+    "Find wines suitable for home entertaining",
+    "Understand wine club benefits"
+  ],
+  "evaluationCriteria": [
+    "Knowledge of wines presented",
+    "Ability to address customer preferences",
+    "Wine club presentation skills"
+  ],
+  "keyDocuments": [
+    "Wine tasting menu",
+    "Wine club benefits sheet"
+  ]
+} 

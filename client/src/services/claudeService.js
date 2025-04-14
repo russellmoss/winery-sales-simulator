@@ -1,20 +1,45 @@
-const API_URL = '/.netlify/functions/claude';
+// Use local server in development, Netlify functions in production
+const API_URL = process.env.NODE_ENV === 'development' 
+  ? 'http://localhost:5001/api/claude/message'
+  : '/.netlify/functions/claude';
 
 const createSystemPrompt = (scenario) => {
   console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
-  return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character:
+  return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character and situation:
 
 Title: ${scenario.title}
 Description: ${scenario.description}
-Client Profile: ${scenario.clientProfile}
 
-Personality Traits:
-${scenario.clientPersonality.traits.map(trait => `- ${trait}`).join('\n')}
+Customer Profile:
+- Names: ${scenario.customerProfile.names.join(' and ')}
+- Home Location: ${scenario.customerProfile.homeLocation}
+- Occupation: ${scenario.customerProfile.occupation}
+- Visit Reason: ${scenario.customerProfile.visitReason}
 
-Objectives:
-${scenario.clientObjectives.map(objective => `- ${objective}`).join('\n')}
+Personality & Knowledge:
+- Knowledge Level: ${scenario.clientPersonality.knowledgeLevel}
+- Budget Level: ${scenario.clientPersonality.budget}
+- Personality Traits: ${scenario.clientPersonality.traits.join(', ')}
 
-Please respond to the wine tasting room staff member's messages in character, based on your profile, personality traits, and objectives. Your responses should be natural and conversational, while staying true to your character's traits and goals.`;
+Wine Preferences:
+- Favorite Wines: ${scenario.clientPersonality.preferences.favoriteWines.join(', ')}
+- Dislikes: ${scenario.clientPersonality.preferences.dislikes.join(', ')}
+${scenario.clientPersonality.preferences.interests.length > 0 ? `- Interests: ${scenario.clientPersonality.preferences.interests.join(', ')}` : ''}
+
+Behavioral Instructions:
+${scenario.behavioralInstructions.generalBehavior.map(behavior => `- ${behavior}`).join('\n')}
+
+Tasting Behavior:
+${scenario.behavioralInstructions.tastingBehavior.map(behavior => `- ${behavior}`).join('\n')}
+
+Purchase Intentions:
+${scenario.behavioralInstructions.purchaseIntentions.map(intention => `- ${intention}`).join('\n')}
+
+Winery Context:
+- Name: ${scenario.wineryInfo.name}
+- Location: ${scenario.wineryInfo.location}
+
+Please respond to the wine tasting room staff member's messages in character, based on your profile, personality traits, and the specific behavioral instructions. Your responses should be natural and conversational while staying true to your character's background, preferences, and visit history.`;
 };
 
 const createAssistantPrompt = (scenario) => {
@@ -61,7 +86,6 @@ export const toggleMute = () => {
     if (!isMuted) {
       audioElement.play().catch(error => {
         console.error('Error playing audio:', error);
-        // Don't reset mute state on error, just log it
       });
     }
   }
@@ -122,7 +146,6 @@ const playNextInQueue = async () => {
         await audioElement.play();
       } catch (error) {
         console.error('Error playing audio:', error);
-        // Don't reset mute state on error, just log it
       }
     }
   } catch (error) {
@@ -143,16 +166,19 @@ export const sendMessageToClaude = async (scenario, messages) => {
       },
       body: JSON.stringify({
         scenario,
-        messages
+        messages: messages.map(msg => ({
+          role: msg.role || 'user',
+          content: msg.message || msg.content || ''
+        }))
       }),
     });
 
     console.log('Response status:', response.status);
     
     if (!response.ok) {
-      const errorData = await response.json();
+      const errorData = await response.json().catch(() => null);
       console.error('Error response data:', errorData);
-      throw new Error(`HTTP error! status: ${response.status}, details: ${JSON.stringify(errorData)}`);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
 
     const data = await response.json();
@@ -171,7 +197,7 @@ export const sendMessageToClaude = async (scenario, messages) => {
       }
     }
     
-    return data.message;
+    return data.response;
   } catch (error) {
     console.error('Error sending message to Claude:', error);
     console.error('Error stack:', error.stack);

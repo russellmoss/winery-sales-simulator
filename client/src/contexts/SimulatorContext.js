@@ -49,17 +49,50 @@ export function SimulatorProvider({ children }) {
   }, [scenarioId]);
 
   const addInteraction = async (message, role) => {
-    try {
-      const newInteraction = {
-        message,
-        role,
-        timestamp: new Date().toISOString(),
-      };
+    if (!scenarioId) {
+      console.error('No scenarioId provided to addInteraction');
+      setError('Scenario ID is required');
+      return;
+    }
 
+    if (!message || !role) {
+      console.error('Missing required fields:', { message: !!message, role: !!role });
+      setError('Message and role are required');
+      return;
+    }
+
+    const newInteraction = {
+      message,
+      role,
+      timestamp: new Date().toISOString(),
+    };
+
+    try {
+      console.log('Adding new interaction:', { scenarioId, role, messageLength: message.length });
+      
+      // Optimistically update the UI
       setInteractions(prev => [...prev, newInteraction]);
-      await saveInteraction(scenarioId, newInteraction);
+      
+      // Save to Firestore
+      const interactionId = await saveInteraction(scenarioId, newInteraction);
+      console.log('Interaction saved successfully with ID:', interactionId);
+      
+      // Update the local state with the ID
+      setInteractions(prev => prev.map(interaction => 
+        interaction === newInteraction 
+          ? { ...interaction, id: interactionId }
+          : interaction
+      ));
+
+      return interactionId;
     } catch (err) {
-      setError(err.message);
+      console.error('Error adding interaction:', err);
+      
+      // Revert the optimistic update on error
+      setInteractions(prev => prev.filter(interaction => interaction !== newInteraction));
+      
+      setError(err.message || 'Failed to save interaction');
+      throw err; // Re-throw to allow handling by the caller
     }
   };
 
@@ -80,6 +113,7 @@ export function SimulatorProvider({ children }) {
     error,
     addInteraction,
     saveScenarioEvaluation,
+    setInteractions
   };
 
   return (

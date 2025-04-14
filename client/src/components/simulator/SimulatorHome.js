@@ -1,6 +1,88 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getScenarios } from '../../firebase/firestoreService';
+import { Box, Typography, Paper, CircularProgress, Alert } from '@mui/material';
+import { styled } from '@mui/material/styles';
+
+const ScenarioCard = styled(Paper)(({ theme }) => ({
+  border: '1px solid #ddd',
+  borderRadius: '8px',
+  padding: '20px',
+  marginBottom: '20px',
+  backgroundColor: 'white',
+  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+  position: 'relative'
+}));
+
+const ScenarioTitle = styled(Typography)(({ theme }) => ({
+  fontSize: '1.5rem',
+  marginBottom: '10px',
+  color: '#333'
+}));
+
+const ScenarioDescription = styled(Typography)(({ theme }) => ({
+  color: '#666',
+  marginBottom: '15px'
+}));
+
+const ScenarioMeta = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '15px',
+  flexWrap: 'wrap',
+  gap: '10px'
+}));
+
+const ScenarioDetails = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: '15px',
+  flexWrap: 'wrap'
+}));
+
+const ScenarioDetail = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '5px',
+  color: '#666',
+  '& i': {
+    color: theme.palette.primary.main
+  }
+}));
+
+const StartButton = styled(Link)(({ theme }) => ({
+  backgroundColor: theme.palette.primary.main,
+  color: 'white',
+  border: 'none',
+  borderRadius: '4px',
+  padding: '8px 16px',
+  cursor: 'pointer',
+  fontWeight: 'bold',
+  transition: 'background-color 0.2s',
+  marginTop: '10px',
+  alignSelf: 'flex-start',
+  textDecoration: 'none',
+  '&:hover': {
+    backgroundColor: theme.palette.primary.dark,
+    textDecoration: 'none'
+  },
+  '&:disabled': {
+    backgroundColor: '#ccc',
+    cursor: 'not-allowed'
+  }
+}));
+
+const LoadingContainer = styled(Box)(({ theme }) => ({
+  textAlign: 'center',
+  padding: '20px',
+  color: '#666'
+}));
+
+const NoScenariosMessage = styled(Typography)(({ theme }) => ({
+  textAlign: 'center',
+  padding: '20px',
+  color: '#666'
+}));
 
 function SimulatorHome() {
   const [scenarios, setScenarios] = useState([]);
@@ -34,145 +116,59 @@ function SimulatorHome() {
   });
 
   if (loading) {
-    return <div className="loading">Loading scenarios...</div>;
+    return (
+      <LoadingContainer>
+        <CircularProgress />
+        <Typography>Loading scenarios...</Typography>
+      </LoadingContainer>
+    );
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <Box sx={{ p: 2 }}>
+        <Alert severity="error">{error}</Alert>
+      </Box>
+    );
   }
 
   return (
-    <div className="simulator-home">
-      <h1>Wine Sales Simulator</h1>
-      <p>Practice your wine sales skills with AI-powered scenarios</p>
+    <Box className="simulator-home" sx={{ p: 2 }}>
+      <Typography variant="h3" gutterBottom>Wine Sales Simulator</Typography>
+      <Typography variant="subtitle1" gutterBottom>Practice your wine sales skills with AI-powered scenarios</Typography>
 
-      {loading ? (
-        <div className="loading">Loading scenarios...</div>
-      ) : error ? (
-        <div className="error">{error}</div>
-      ) : scenarios.length === 0 ? (
-        <div className="no-scenarios">No scenarios available</div>
+      {scenarios.length === 0 ? (
+        <NoScenariosMessage>No scenarios available</NoScenariosMessage>
       ) : (
         scenarios.map((scenario) => (
-          <div key={scenario.id} className="scenario-card">
-            <div className="scenario-card-content">
-              <h2 className="scenario-title">{scenario.title}</h2>
-              <p className="scenario-description">{scenario.description}</p>
+          <ScenarioCard key={scenario.id}>
+            <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <ScenarioTitle variant="h5">{scenario.title}</ScenarioTitle>
+              <ScenarioDescription>{scenario.description}</ScenarioDescription>
               
-              <div className="scenario-meta">
-                <div className="scenario-details">
-                  <div className="scenario-detail">
-                    <i className="fas fa-signal"></i>
+              <ScenarioMeta>
+                <ScenarioDetails>
+                  <ScenarioDetail>
+                    <i className="fas fa-signal" />
                     <span>{scenario.difficulty || 'Beginner'}</span>
-                  </div>
-                  <div className="scenario-detail">
-                    <i className="fas fa-clock"></i>
+                  </ScenarioDetail>
+                  <ScenarioDetail>
+                    <i className="fas fa-clock" />
                     <span>{scenario.estimatedDuration || '30'} minutes</span>
-                  </div>
-                </div>
-              </div>
+                  </ScenarioDetail>
+                </ScenarioDetails>
+              </ScenarioMeta>
               
-              <div className="scenario-actions">
-                <Link 
-                  to={`/${scenario.id}/brief`} 
-                  className="start-button"
-                >
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+                <StartButton to={`/${scenario.id}/brief`}>
                   Start Scenario
-                </Link>
-              </div>
-            </div>
-          </div>
+                </StartButton>
+              </Box>
+            </Box>
+          </ScenarioCard>
         ))
       )}
-
-      <style jsx>{`
-        .scenario-card {
-          border: 1px solid #ddd;
-          border-radius: 8px;
-          padding: 20px;
-          margin-bottom: 20px;
-          background-color: white;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-          position: relative;
-        }
-        .scenario-title {
-          font-size: 1.5rem;
-          margin-bottom: 10px;
-          color: #333;
-        }
-        .scenario-description {
-          color: #666;
-          margin-bottom: 15px;
-        }
-        .scenario-meta {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-        .scenario-details {
-          display: flex;
-          gap: 15px;
-          flex-wrap: wrap;
-        }
-        .scenario-detail {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          color: #666;
-        }
-        .scenario-detail i {
-          color: #007bff;
-        }
-        .start-button {
-          background-color: #007bff;
-          color: white;
-          border: none;
-          border-radius: 4px;
-          padding: 8px 16px;
-          cursor: pointer;
-          font-weight: bold;
-          transition: background-color 0.2s;
-          margin-top: 10px;
-          align-self: flex-start;
-        }
-        .start-button:hover {
-          background-color: #0056b3;
-        }
-        .start-button:disabled {
-          background-color: #ccc;
-          cursor: not-allowed;
-        }
-        .loading {
-          text-align: center;
-          padding: 20px;
-          color: #666;
-        }
-        .error {
-          color: #dc3545;
-          padding: 10px;
-          background-color: #f8d7da;
-          border-radius: 4px;
-          margin-bottom: 20px;
-        }
-        .no-scenarios {
-          text-align: center;
-          padding: 20px;
-          color: #666;
-        }
-        .scenario-card-content {
-          display: flex;
-          flex-direction: column;
-        }
-        .scenario-actions {
-          margin-top: 15px;
-          display: flex;
-          justify-content: flex-end;
-        }
-      `}</style>
-    </div>
+    </Box>
   );
 }
 

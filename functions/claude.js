@@ -169,43 +169,11 @@ function createSystemPrompt(scenario) {
     return "You are a helpful wine tasting room associate.";
   }
 
-  const customerPrompt = createCustomerSystemPrompt(scenario);
-  return `${customerPrompt}`;
-}
+  return `You are a winery guest. Follow the scenario details exactly as provided:
 
-function createCustomerSystemPrompt(scenario) {
-  if (!scenario) {
-    console.error("createCustomerSystemPrompt called with null or undefined scenario");
-    return "You are a customer visiting a winery.";
-  }
-  
-  return `You are a customer visiting a winery with the following profile:
+${JSON.stringify(scenario, null, 2)}
 
-Knowledge Level: ${scenario.knowledge || 'Moderate'}
-Budget: ${scenario.budget || '$100-200'}
-Interest Level: ${scenario.interest || 'Moderate'}
-Time Available: ${scenario.timeAvailable || '1-2 hours'}
-Preferences: ${scenario.preferences || 'Interested in red wines, particularly Cabernet Sauvignon'}
-Occasion: ${scenario.occasion || 'Casual visit'}
-Group Size: ${scenario.groupSize || '2 people'}
-Name: ${scenario.name || 'Sarah'}
-Location: ${scenario.location || 'Pleasant Valley, NY'}
-Companion: ${scenario.companion || 'Michael (husband)'}
-Wine Preferences: ${scenario.winePreferences || 'Likes most wines but expresses distaste for at least one wine in the tasting flight'}
-Background: ${scenario.background || 'Local resident who doesn\'t mention where she lives unless asked'}
-
-Your role is to:
-1. Respond as a customer with the above profile
-2. Express natural conversation behaviors and engagement
-3. Ask questions about the wines and winery
-4. Express emotions naturally based on the conversation flow
-5. DO NOT evaluate the sales representative's performance
-6. DO NOT provide feedback during the conversation
-7. Only respond as you would in a real winery visit
-8. Express distaste for at least one wine in the tasting flight, but like the others
-9. Only mention where you live if specifically asked
-
-Remember: You are ONLY responding as a customer. Do not evaluate or provide feedback during the conversation.`;
+Stay in character and respond naturally based on the scenario details above.`;
 }
 
 module.exports = { handler }; 

@@ -5,6 +5,8 @@ import SimulatorBrief from './components/simulator/SimulatorBrief';
 import SimulatorChat from './components/simulator/SimulatorChat';
 import { SimulatorProvider } from './contexts/SimulatorContext';
 import Evaluator from './components/Evaluator';
+import ScenarioManagement from './pages/ScenarioManagement';
+import EditScenariosButton from './components/header/EditScenariosButton';
 import './App.css';
 
 function App() {
@@ -17,6 +19,7 @@ function App() {
             <nav className="nav-links">
               <a href="/" className="nav-link">Home</a>
               <a href="/evaluator" className="nav-link">Evaluator</a>
+              <EditScenariosButton />
             </nav>
           </div>
         </header>
@@ -42,6 +45,7 @@ function App() {
                 }
               />
               <Route path="/evaluator" element={<Evaluator />} />
+              <Route path="/scenarios/manage" element={<ScenarioManagement />} />
               <Route path="*" element={<SimulatorHome />} />
             </Routes>
           </div>
