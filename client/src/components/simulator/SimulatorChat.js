@@ -93,20 +93,53 @@ function SimulatorChat() {
       );
 
       console.log('Received response from Claude:', {
+        responseType: typeof response,
+        responseValue: response,
         responseLength: response?.length,
-        firstFewWords: response?.split(' ').slice(0, 5).join(' ') + '...'
+        firstFewWords: typeof response === 'string' ? response.split(' ').slice(0, 5).join(' ') + '...' : 'Not a string'
       });
 
       // Add Claude's response - ensure we're passing a string message
       try {
-        const responseMessage = typeof response === 'string' ? response : response.response || response.message || '';
-        if (!responseMessage) {
-          throw new Error('Invalid response format from Claude');
+        if (!response) {
+          throw new Error('No response received from Claude');
         }
+
+        let responseMessage;
+        if (typeof response === 'string') {
+          responseMessage = response;
+        } else if (typeof response === 'object') {
+          responseMessage = response.response || response.message || response.content || JSON.stringify(response);
+        } else {
+          responseMessage = String(response);
+        }
+
+        if (!responseMessage) {
+          throw new Error('Could not extract message from Claude response');
+        }
+
+        console.log('Saving Claude response to Firestore:', {
+          messageLength: responseMessage.length,
+          firstFewWords: responseMessage.split(' ').slice(0, 5).join(' ') + '...'
+        });
+
         await addInteraction(responseMessage, 'assistant');
       } catch (err) {
-        console.error('Failed to save Claude response to Firestore:', err);
+        console.error('Failed to save Claude response to Firestore:', {
+          error: err,
+          errorName: err.name,
+          errorMessage: err.message,
+          errorStack: err.stack,
+          response: response
+        });
         setChatError('The response was received but could not be saved to the database. The conversation will continue in-memory only.');
+        
+        // Update local state even if Firestore save fails
+        setInteractions(prev => [...prev, {
+          message: typeof response === 'string' ? response : String(response),
+          role: 'assistant',
+          timestamp: new Date().toISOString()
+        }]);
       }
 
     } catch (err) {
