@@ -87,31 +87,56 @@ function SimulatorChat() {
       });
 
       // Get response from Claude
-      const response = await sendMessageToClaude(
-        currentScenario,
-        [...interactions, { message: currentUserMessage, role: 'user' }]
-      );
+      let claudeResponse;
+      try {
+        claudeResponse = await sendMessageToClaude(
+          currentScenario,
+          [...interactions, { message: currentUserMessage, role: 'user' }]
+        );
 
-      console.log('Received response from Claude:', {
-        responseType: typeof response,
-        responseValue: response,
-        responseLength: response?.length,
-        firstFewWords: typeof response === 'string' ? response.split(' ').slice(0, 5).join(' ') + '...' : 'Not a string'
-      });
+        console.log('Received response from Claude:', {
+          responseType: typeof claudeResponse,
+          responseValue: claudeResponse,
+          responseLength: claudeResponse?.length,
+          responseKeys: claudeResponse ? Object.keys(claudeResponse) : [],
+          firstFewWords: typeof claudeResponse === 'string' ? claudeResponse.split(' ').slice(0, 5).join(' ') + '...' : 'Not a string'
+        });
+      } catch (claudeError) {
+        console.error('Error getting response from Claude:', claudeError);
+        
+        // If we have audio playing but no text, create a placeholder message
+        if (claudeError.message.includes('Could not extract text response')) {
+          claudeResponse = "I apologize, but I'm having trouble displaying my response. However, you should be able to hear my answer through the audio.";
+        } else {
+          throw claudeError;
+        }
+      }
 
       // Add Claude's response - ensure we're passing a string message
       try {
-        if (!response) {
+        if (!claudeResponse) {
           throw new Error('No response received from Claude');
         }
 
         let responseMessage;
-        if (typeof response === 'string') {
-          responseMessage = response;
-        } else if (typeof response === 'object') {
-          responseMessage = response.response || response.message || response.content || JSON.stringify(response);
+        if (typeof claudeResponse === 'string') {
+          responseMessage = claudeResponse;
+        } else if (typeof claudeResponse === 'object') {
+          // Try to extract the message from various possible object structures
+          responseMessage = claudeResponse.text || claudeResponse.content || claudeResponse.message;
+          
+          if (!responseMessage && claudeResponse.response) {
+            responseMessage = typeof claudeResponse.response === 'string' ? 
+              claudeResponse.response : 
+              claudeResponse.response.text || claudeResponse.response.content || claudeResponse.response.message;
+          }
+          
+          if (!responseMessage) {
+            console.error('Could not find message in response object:', claudeResponse);
+            responseMessage = JSON.stringify(claudeResponse);
+          }
         } else {
-          responseMessage = String(response);
+          responseMessage = String(claudeResponse);
         }
 
         if (!responseMessage) {
@@ -123,6 +148,14 @@ function SimulatorChat() {
           firstFewWords: responseMessage.split(' ').slice(0, 5).join(' ') + '...'
         });
 
+        // Update local state first for immediate feedback
+        setInteractions(prev => [...prev, {
+          message: responseMessage,
+          role: 'assistant',
+          timestamp: new Date().toISOString()
+        }]);
+
+        // Then try to save to Firestore
         await addInteraction(responseMessage, 'assistant');
       } catch (err) {
         console.error('Failed to save Claude response to Firestore:', {
@@ -130,16 +163,9 @@ function SimulatorChat() {
           errorName: err.name,
           errorMessage: err.message,
           errorStack: err.stack,
-          response: response
+          response: claudeResponse
         });
         setChatError('The response was received but could not be saved to the database. The conversation will continue in-memory only.');
-        
-        // Update local state even if Firestore save fails
-        setInteractions(prev => [...prev, {
-          message: typeof response === 'string' ? response : String(response),
-          role: 'assistant',
-          timestamp: new Date().toISOString()
-        }]);
       }
 
     } catch (err) {

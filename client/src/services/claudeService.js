@@ -192,12 +192,7 @@ export const sendMessageToClaude = async (scenario, messages) => {
     }
 
     const data = await response.json();
-    console.log('Response data:', {
-      hasResponse: !!data.response,
-      responseType: typeof data.response,
-      hasAudio: !!data.audio,
-      audioLength: data.audio?.length
-    });
+    console.log('Full response data:', data);
     
     // Check if we have audio data
     if (data.audio) {
@@ -212,15 +207,42 @@ export const sendMessageToClaude = async (scenario, messages) => {
       }
     }
 
-    // Ensure we return a proper text response
-    if (!data.response) {
-      throw new Error('No response received from Claude API');
+    // Extract text response with more detailed logging
+    let textResponse = null;
+
+    if (typeof data === 'string') {
+      textResponse = data;
+    } else if (typeof data === 'object') {
+      if (data.response) {
+        textResponse = typeof data.response === 'string' ? 
+          data.response : 
+          data.response.text || data.response.content || data.response.message;
+      }
+      
+      // Try other common response formats
+      if (!textResponse) {
+        textResponse = data.text || data.content || data.message;
+      }
+
+      // For Netlify function format
+      if (!textResponse && data.body) {
+        const body = typeof data.body === 'string' ? JSON.parse(data.body) : data.body;
+        textResponse = body.response || body.text || body.content || body.message;
+      }
     }
 
-    const textResponse = typeof data.response === 'string' ? 
-      data.response : 
-      data.response.text || data.response.content || data.response.message || JSON.stringify(data.response);
-    
+    console.log('Extracted text response:', {
+      hasResponse: !!textResponse,
+      responseType: typeof textResponse,
+      responseLength: textResponse?.length,
+      firstFewWords: textResponse ? textResponse.split(' ').slice(0, 5).join(' ') + '...' : 'No text found'
+    });
+
+    if (!textResponse) {
+      console.error('Could not extract text response from data:', data);
+      throw new Error('Could not extract text response from Claude API');
+    }
+
     return textResponse;
   } catch (error) {
     console.error('Error sending message to Claude:', error);
