@@ -157,7 +157,20 @@ const playNextInQueue = async () => {
 export const sendMessageToClaude = async (scenario, messages) => {
   try {
     console.log('Sending message to Claude with scenario:', JSON.stringify(scenario, null, 2));
-    console.log('Messages to send:', JSON.stringify(messages, null, 2));
+    
+    // Clean and format messages to prevent duplicates
+    const formattedMessages = messages.map(msg => ({
+      role: msg.role || 'user',
+      content: msg.message || msg.content || ''
+    })).filter((msg, index, self) => 
+      // Remove any duplicate messages that might cause repetition
+      index === self.findIndex(m => 
+        m.role === msg.role && 
+        m.content === msg.content
+      )
+    );
+
+    console.log('Messages to send:', JSON.stringify(formattedMessages, null, 2));
     
     const response = await fetch(API_URL, {
       method: 'POST',
@@ -166,10 +179,7 @@ export const sendMessageToClaude = async (scenario, messages) => {
       },
       body: JSON.stringify({
         scenario,
-        messages: messages.map(msg => ({
-          role: msg.role || 'user',
-          content: msg.message || msg.content || ''
-        }))
+        messages: formattedMessages
       }),
     });
 
@@ -182,7 +192,12 @@ export const sendMessageToClaude = async (scenario, messages) => {
     }
 
     const data = await response.json();
-    console.log('Response data:', data);
+    console.log('Response data:', {
+      hasResponse: !!data.response,
+      responseType: typeof data.response,
+      hasAudio: !!data.audio,
+      audioLength: data.audio?.length
+    });
     
     // Check if we have audio data
     if (data.audio) {
@@ -196,8 +211,17 @@ export const sendMessageToClaude = async (scenario, messages) => {
         playNextInQueue();
       }
     }
+
+    // Ensure we return a proper text response
+    if (!data.response) {
+      throw new Error('No response received from Claude API');
+    }
+
+    const textResponse = typeof data.response === 'string' ? 
+      data.response : 
+      data.response.text || data.response.content || data.response.message || JSON.stringify(data.response);
     
-    return data.response;
+    return textResponse;
   } catch (error) {
     console.error('Error sending message to Claude:', error);
     console.error('Error stack:', error.stack);
