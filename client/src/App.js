@@ -1,62 +1,81 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { SimulatorProvider } from './contexts/SimulatorContext';
+import { useAuth } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './pages/Login';
+import Header from './components/Header';
+import Home from './pages/Home';
 import SimulatorHome from './components/simulator/SimulatorHome';
 import SimulatorBrief from './components/simulator/SimulatorBrief';
 import SimulatorChat from './components/simulator/SimulatorChat';
-import { SimulatorProvider } from './contexts/SimulatorContext';
 import Evaluator from './components/Evaluator';
 import ScenarioManagement from './pages/ScenarioManagement';
-import EditScenariosButton from './components/header/EditScenariosButton';
 import './App.css';
+
+function AppContent() {
+  const { loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading">Loading...</div>;
+  }
+
+  return (
+    <div className="app">
+      <Header />
+      <main className="main-content">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/" element={
+            <PrivateRoute>
+              <Home />
+            </PrivateRoute>
+          } />
+          <Route path="/simulator" element={
+            <PrivateRoute>
+              <SimulatorHome />
+            </PrivateRoute>
+          } />
+          <Route path="/scenario/:scenarioId/chat" element={
+            <PrivateRoute>
+              <SimulatorChat />
+            </PrivateRoute>
+          } />
+          <Route path="/scenario/:scenarioId/brief" element={
+            <PrivateRoute>
+              <SimulatorBrief />
+            </PrivateRoute>
+          } />
+          <Route path="/evaluator" element={
+            <PrivateRoute>
+              <Evaluator />
+            </PrivateRoute>
+          } />
+          <Route path="/scenarios/manage" element={
+            <PrivateRoute>
+              <ScenarioManagement />
+            </PrivateRoute>
+          } />
+          <Route path="*" element={
+            <PrivateRoute>
+              <Home />
+            </PrivateRoute>
+          } />
+        </Routes>
+      </main>
+    </div>
+  );
+}
 
 function App() {
   return (
     <Router>
-      <div className="app">
-        <header className="header">
-          <div className="container header-content">
-            <a href="/" className="logo">Winery Sales Simulator</a>
-            <nav className="nav-links">
-              <a href="/" className="nav-link">Home</a>
-              <a href="/evaluator" className="nav-link">Evaluator</a>
-              <EditScenariosButton />
-            </nav>
-          </div>
-        </header>
-
-        <main className="main-content">
-          <div className="container">
-            <Routes>
-              <Route path="/" element={<SimulatorHome />} />
-              <Route
-                path="/:scenarioId/brief"
-                element={
-                  <SimulatorProvider>
-                    <SimulatorBrief />
-                  </SimulatorProvider>
-                }
-              />
-              <Route
-                path="/:scenarioId/chat"
-                element={
-                  <SimulatorProvider>
-                    <SimulatorChat />
-                  </SimulatorProvider>
-                }
-              />
-              <Route path="/evaluator" element={<Evaluator />} />
-              <Route path="/scenarios/manage" element={<ScenarioManagement />} />
-              <Route path="*" element={<SimulatorHome />} />
-            </Routes>
-          </div>
-        </main>
-
-        <footer className="footer">
-          <div className="container footer-content">
-            <p>&copy; 2024 Winery Sales Simulator. All rights reserved.</p>
-          </div>
-        </footer>
-      </div>
+      <AuthProvider>
+        <SimulatorProvider>
+          <AppContent />
+        </SimulatorProvider>
+      </AuthProvider>
     </Router>
   );
 }

@@ -1,0 +1,136 @@
+.simulator-home {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.simulator-home h1 {
+  font-size: 2.5rem;
+  color: #333;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.scenarios-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.scenario-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.scenario-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+}
+
+.scenario-card h3 {
+  font-size: 1.5rem;
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.scenario-card p {
+  color: #666;
+  margin-bottom: 1.5rem;
+  flex-grow: 1;
+  line-height: 1.6;
+}
+
+.scenario-details {
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.difficulty {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  background: #f0f0f0;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.start-button {
+  display: inline-block;
+  background: #4a90e2;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  text-align: center;
+  transition: background-color 0.2s ease;
+  align-self: flex-end;
+}
+
+.start-button:hover {
+  background: #357abd;
+}
+
+.loading-container, .error-container, .no-scenarios {
+  text-align: center;
+  padding: 3rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.loading-container h2, .error-container h2, .no-scenarios h2 {
+  color: #333;
+  margin-bottom: 1rem;
+}
+
+.loading-container p, .error-container p, .no-scenarios p {
+  color: #666;
+}
+
+.error-container {
+  border: 1px solid #ff4d4d;
+}
+
+.login-link {
+  display: inline-block;
+  margin-top: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: #4a90e2;
+  color: white;
+  text-decoration: none;
+  border-radius: 6px;
+  font-weight: 600;
+  transition: background-color 0.2s ease;
+}
+
+.login-link:hover {
+  background: #357abd;
+}
+
+@media (max-width: 768px) {
+  .simulator-home {
+    padding: 1rem;
+  }
+  
+  .scenario-card {
+    padding: 1.25rem;
+  }
+  
+  .simulator-home h1 {
+    font-size: 2rem;
+    margin-bottom: 1.5rem;
+  }
+} 

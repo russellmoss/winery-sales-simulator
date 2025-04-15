@@ -1,21 +1,42 @@
-import React from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 
 function SimulatorBrief() {
-  const { currentScenario, loading, error } = useSimulator();
+  const { currentScenario, loading, error, loadScenario } = useSimulator();
   const { scenarioId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (scenarioId) {
+      loadScenario(scenarioId);
+    }
+  }, [scenarioId, loadScenario]);
 
   if (loading) {
     return <div className="loading">Loading scenario...</div>;
   }
 
   if (error) {
-    return <div className="error-message">{error}</div>;
+    return (
+      <div className="error-container">
+        <div className="error-message">{error}</div>
+        <button onClick={() => navigate('/')} className="btn btn-primary">
+          Return Home
+        </button>
+      </div>
+    );
   }
 
   if (!currentScenario) {
-    return <div className="error-message">Scenario not found</div>;
+    return (
+      <div className="error-container">
+        <div className="error-message">Scenario not found</div>
+        <button onClick={() => navigate('/')} className="btn btn-primary">
+          Return Home
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -62,7 +83,7 @@ function SimulatorBrief() {
       <div className="brief-section">
         <h2 className="brief-section-title">Evaluation Criteria</h2>
         <ul>
-          {currentScenario['evaluation criteria']?.map((criterion, index) => (
+          {currentScenario.evaluationCriteria?.map((criterion, index) => (
             <li key={index}>{criterion}</li>
           )) || <li>No evaluation criteria specified</li>}
         </ul>
@@ -79,7 +100,7 @@ function SimulatorBrief() {
 
       <div className="brief-actions">
         <Link
-          to={`/${scenarioId}/chat`}
+          to={`/scenario/${scenarioId}/chat`}
           className="btn btn-primary"
         >
           Start Conversation

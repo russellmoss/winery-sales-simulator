@@ -10,7 +10,7 @@ import {
   orderBy,
   setDoc
 } from 'firebase/firestore';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { debugScenarioStructure, validateScenario, debugFirestoreOperations } from '../utils/debugUtils';
 
 const SCENARIOS_COLLECTION = 'scenarios';
@@ -18,10 +18,17 @@ const SCENARIOS_COLLECTION = 'scenarios';
 // Scenarios
 export const getScenarios = async () => {
   try {
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      console.error('No authenticated user found');
+      throw new Error('You must be logged in to view scenarios');
+    }
+
     await debugFirestoreOperations('read', { collection: SCENARIOS_COLLECTION });
     
     console.log('Attempting to fetch scenarios from Firestore...');
     console.log('Database instance:', db);
+    console.log('Current user:', auth.currentUser.uid);
     
     const scenariosRef = collection(db, SCENARIOS_COLLECTION);
     console.log('Collection reference created:', {
@@ -46,6 +53,9 @@ export const getScenarios = async () => {
     
     const scenarios = snapshot.docs.map(doc => {
       const data = doc.data();
+      // Log each scenario for debugging
+      console.log('Processing scenario:', doc.id, data);
+      
       // Ensure all required fields are present
       return {
         id: doc.id,
@@ -74,10 +84,10 @@ export const getScenarios = async () => {
       code: error.code,
       message: error.message,
       stack: error.stack,
-      name: error.name
+      name: error.name,
+      user: auth.currentUser?.uid || 'no user'
     });
-    // Return empty array instead of throwing to prevent app crashes
-    return [];
+    throw error; // Let the component handle the error
   }
 };
 
