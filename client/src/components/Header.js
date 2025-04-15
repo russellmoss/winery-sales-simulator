@@ -26,9 +26,7 @@ function Header() {
         <nav className="nav-links">
           <Link to="/" className="nav-link">Home</Link>
           <Link to="/evaluator" className="nav-link">Evaluator</Link>
-          {process.env.NODE_ENV === 'development' && (
-            <Link to="/scenarios/manage" className="nav-link">Edit Scenarios</Link>
-          )}
+          <Link to="/scenarios/manage" className="nav-link">Edit Scenarios</Link>
           <button onClick={handleLogout} className="logout-button">
             Logout
           </button>
