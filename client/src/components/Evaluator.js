@@ -41,7 +41,7 @@ Your evaluation should be thorough, fair, and actionable while maintaining the e
       <div className="enhanced-evaluator-section">
         <p className="enhanced-title">Use the Enhanced Evaluator</p>
         <a 
-          href="https://wine-sales-evaluator.onrender.com/" 
+          href="https://enhanced-evaluator.onrender.com/" 
           target="_blank" 
           rel="noopener noreferrer"
           className="enhanced-button"
