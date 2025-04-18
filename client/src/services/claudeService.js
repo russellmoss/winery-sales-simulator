@@ -1,8 +1,9 @@
 // Use local server in development, Netlify functions in production
 const API_URL = process.env.NODE_ENV === 'development' 
-  ? 'http://localhost:5001/api/claude/message'
+  ? 'http://localhost:5000/api/claude/message'
   : '/.netlify/functions/claude';
 
+// eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
   console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
   return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character and situation:
@@ -42,6 +43,7 @@ Winery Context:
 Please respond to the wine tasting room staff member's messages in character, based on your profile, personality traits, and the specific behavioral instructions. Your responses should be natural and conversational while staying true to your character's background, preferences, and visit history.`;
 };
 
+// eslint-disable-next-line no-unused-vars
 const createAssistantPrompt = (scenario) => {
   console.log('Creating assistant prompt with scenario:', JSON.stringify(scenario, null, 2));
   return `You are a wine tasting room staff member in a sales simulation scenario. Here are the details of your role:
@@ -59,6 +61,7 @@ ${scenario.tips.map(tip => `- ${tip}`).join('\n')}
 Please respond to the customer's messages in character, based on your role and the evaluation criteria. Your responses should demonstrate good sales techniques, product knowledge, and customer engagement while staying true to your role as a wine tasting room staff member.`;
 };
 
+// eslint-disable-next-line no-unused-vars
 const formatMessages = (messages) => {
   console.log('Formatting messages:', JSON.stringify(messages, null, 2));
   const formatted = messages.map(msg => ({

@@ -182,9 +182,10 @@ app.post('/api/claude/message', async (req, res) => {
     };
 
     // Try to convert text to speech using ElevenLabs if API key is available
-    if (process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID) {
+    if (process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_ANN_VOICE_ID) {
       try {
-        const voiceId = process.env.ELEVENLABS_VOICE_ID;
+        const voiceId = process.env[scenario.voiceId] || process.env.ELEVENLABS_ANN_VOICE_ID; // Use scenario's voice or default to Ann
+        console.log('Using voice ID:', voiceId);
         const elevenLabsResponse = await axios.post(
           `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
           {

@@ -41,10 +41,18 @@ const KNOWLEDGE_LEVELS = ['Beginner', 'Intermediate', 'Advanced'];
 const BUDGET_LEVELS = ['Low', 'Moderate', 'High'];
 const FUNNEL_STAGES = ['awareness', 'consideration', 'decision'];
 
+const VOICE_OPTIONS = [
+  { id: 'ELEVENLABS_ANN_VOICE_ID', name: 'Ann' },
+  { id: 'ELEVENLABS_GABRIELLA_VOICE_ID', name: 'Gabriella' },
+  { id: 'ELEVENLABS_RUSSELL_VOICE_ID', name: 'Russell' },
+  { id: 'ELEVENLABS_MIKE_VOICE_ID', name: 'Mike' }
+];
+
 const initialFormState = {
   title: '',
   description: '',
   difficulty: 'Beginner',
+  voiceId: 'ELEVENLABS_ANN_VOICE_ID',
   wineryInfo: {
     name: '',
     location: '',
@@ -122,6 +130,7 @@ const ScenarioManagement = () => {
         title: scenario.title || '',
         description: scenario.description || '',
         difficulty: scenario.difficulty || 'Beginner',
+        voiceId: scenario.voiceId || 'ELEVENLABS_ANN_VOICE_ID',
         wineryInfo: {
           name: scenario.wineryInfo?.name || '',
           location: scenario.wineryInfo?.location || '',
@@ -993,6 +1002,23 @@ const ScenarioManagement = () => {
                     multiline
                     rows={4}
                   />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth margin="normal">
+                    <InputLabel>Voice</InputLabel>
+                    <Select
+                      name="voiceId"
+                      value={formData.voiceId}
+                      onChange={handleInputChange}
+                    >
+                      {VOICE_OPTIONS.map((voice) => (
+                        <MenuItem key={voice.id} value={voice.id}>
+                          {voice.name}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                 </Grid>
               </Grid>
             </Box>

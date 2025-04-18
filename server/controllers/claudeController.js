@@ -62,7 +62,8 @@ Stay in character and respond naturally based on the scenario details above.`;
     console.log('Claude response:', responseText);
 
     // Convert text to speech using ElevenLabs
-    const voiceId = process.env.ELEVENLABS_VOICE_ID || '21m00Tcm4TlvDq8ikWAM'; // Default to Rachel voice
+    const voiceId = process.env[scenario.voiceId] || process.env.ELEVENLABS_ANN_VOICE_ID; // Use scenario's voice or default to Ann
+    console.log('Using voice ID:', voiceId);
     const elevenLabsResponse = await axios.post(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
