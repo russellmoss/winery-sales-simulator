@@ -5,6 +5,7 @@ import { toast } from 'react-hot-toast';
 import IOSAudioCapture from './IOSAudioCapture';
 import { checkSpeechToTextCapability, requestMicrophonePermission } from '../../utils/permissionsUtil';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { getEndpoint } from '../../config/api';
 
 // Helper function to detect platform and browser
 const getPlatformInfo = () => {
@@ -221,7 +222,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       try {
         setIsAnalyzing(true);
         
-        const response = await fetch('http://localhost:5000/api/claude/cleanup-transcription', {
+        const response = await fetch(getEndpoint('cleanup-transcription'), {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -236,7 +237,6 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
 
         const data = await response.json();
         if (onTranscriptComplete) {
-          // Ensure we're passing a properly formatted message object
           onTranscriptComplete({
             role: 'user',
             content: data.cleanedText,
@@ -263,7 +263,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       formData.append('audio', audioBlob, 'recording.wav');
       
       // Send the audio file to the server for transcription
-      const response = await fetch('http://localhost:5000/api/claude/transcribe-audio', {
+      const response = await fetch(getEndpoint('transcribe-audio'), {
         method: 'POST',
         body: formData,
       });
@@ -276,7 +276,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       const data = await response.json();
       
       // Clean up the transcription
-      const cleanupResponse = await fetch('http://localhost:5000/api/claude/cleanup-transcription', {
+      const cleanupResponse = await fetch(getEndpoint('cleanup-transcription'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

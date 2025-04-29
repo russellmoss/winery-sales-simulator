@@ -1,5 +1,5 @@
-import { API_BASE_URL } from '../config/api';
 import { v4 as uuidv4 } from 'uuid';
+import { getEndpoint } from '../config/api';
 
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
@@ -193,17 +193,6 @@ export const playQueuedAudio = async () => {
 
 // Initialize audio playback system
 initializeAudioContext();
-
-// Function to get the correct endpoint based on environment
-const getEndpoint = (path) => {
-  // In production, use the Render backend URL
-  if (process.env.NODE_ENV === 'production') {
-    return `${process.env.REACT_APP_API_URL}/api/claude/${path}`;
-  }
-  
-  // In development, use the local Express server
-  return `http://localhost:5000/api/claude/${path}`;
-};
 
 // Function to send message to Claude and handle audio response
 export const sendMessageToClaude = async (messages, scenario, customerProfile, assistantProfile, wineryProfile) => {

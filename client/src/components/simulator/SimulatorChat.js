@@ -13,6 +13,7 @@ import PermissionsManager from '../common/PermissionsManager';
 import { conversationToMarkdown, generateEvaluationPrompt } from '../../services/exportService';
 import { evaluateConversation, loadRubric } from '../../services/evaluationService';
 import EvaluationDashboard from './EvaluationDashboard';
+import { getEndpoint } from '../../config/api';
 
 function SimulatorChat() {
   const { 
@@ -338,7 +339,7 @@ function SimulatorChat() {
       formData.append('audio', audioBlob, 'recording.wav');
       
       // Send the audio file to the server for transcription
-      const response = await fetch('http://localhost:5000/api/claude/transcribe-audio', {
+      const response = await fetch(getEndpoint('transcribe-audio'), {
         method: 'POST',
         body: formData,
       });
