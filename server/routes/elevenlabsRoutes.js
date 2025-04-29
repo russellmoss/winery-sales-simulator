@@ -13,8 +13,7 @@ router.use((req, res, next) => {
 router.get('/health', (req, res) => {
   res.json({
     status: 'ok',
-    service: 'elevenlabs',
-    timestamp: new Date().toISOString()
+    elevenLabs: !!process.env.ELEVENLABS_API_KEY
   });
 });
 

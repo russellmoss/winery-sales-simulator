@@ -174,7 +174,7 @@ app.get('/health', async (req, res) => {
     services: {
       claude: !!process.env.CLAUDE_API_KEY,
       elevenLabs: !!process.env.ELEVENLABS_API_KEY,
-      firebase: !!process.env.REACT_APP_FIREBASE_API_KEY
+      firebase: !!process.env.FIREBASE_API_KEY
     }
   };
 
@@ -192,9 +192,16 @@ app.get('/health', async (req, res) => {
 
 // Import routes
 const claudeRoutes = require('./routes/claudeRoutes');
+const elevenlabsRoutes = require('./routes/elevenlabsRoutes');
 
 // Use routes
 app.use('/api/claude', claudeRoutes);
+app.use('/api/elevenlabs', elevenlabsRoutes);
+
+// Serve favicon
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
 
 console.log('Mounting /api/users routes...');
 app.use('/api/users', require('./routes/userRoutes'));
@@ -227,12 +234,31 @@ app.use((req, res) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-  console.log('Environment variables status:', {
-    claude: !!process.env.CLAUDE_API_KEY,
-    elevenLabs: !!process.env.ELEVENLABS_API_KEY,
-    firebase: !!process.env.REACT_APP_FIREBASE_API_KEY
+const MAX_PORT_ATTEMPTS = 10;
+
+function startServer(port) {
+  server.listen(port, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${port}`);
+    console.log('Environment variables status:', {
+      claude: !!process.env.CLAUDE_API_KEY,
+      elevenLabs: !!process.env.ELEVENLABS_API_KEY,
+      firebase: !!process.env.FIREBASE_API_KEY
+    });
+    console.log(`WebSocket server running on ws://localhost:${port}/ws`);
+  }).on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${port} is in use, trying port ${port + 1}...`);
+      if (port < PORT + MAX_PORT_ATTEMPTS) {
+        startServer(port + 1);
+      } else {
+        console.error(`Could not find an available port after ${MAX_PORT_ATTEMPTS} attempts`);
+        process.exit(1);
+      }
+    } else {
+      console.error('Server error:', err);
+      process.exit(1);
+    }
   });
-  console.log(`WebSocket server running on ws://localhost:${PORT}/ws`);
-}); 
+}
+
+startServer(PORT); 
