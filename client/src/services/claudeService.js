@@ -258,7 +258,7 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
       });
 
       // Send request to backend proxy
-      const response = await fetch(`${API_BASE_URL}/api/claude`, {
+      const response = await fetch(`${API_BASE_URL}/claude/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
