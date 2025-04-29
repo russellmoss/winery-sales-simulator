@@ -1,11 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { API_BASE_URL, getEndpoint } from '../config/api';
 
-// Base URL configuration
-const API_BASE_URL = process.env.NODE_ENV === 'development' 
-  ? ''  // In development, requests will be proxied to http://localhost:3001
-  : 'https://winery-sales-simulator.onrender.com';  // Production URL
-
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
   console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
