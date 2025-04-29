@@ -16,6 +16,13 @@ const { errorHandler } = require('./middleware/errorHandler');
 console.log('Environment variables loaded:');
 console.log('PORT:', process.env.PORT);
 console.log('CLAUDE_API_KEY exists:', !!process.env.CLAUDE_API_KEY);
+console.log('Firebase Environment Variables:');
+console.log('FIREBASE_API_KEY exists:', !!process.env.FIREBASE_API_KEY);
+console.log('FIREBASE_AUTH_DOMAIN exists:', !!process.env.FIREBASE_AUTH_DOMAIN);
+console.log('FIREBASE_PROJECT_ID exists:', !!process.env.FIREBASE_PROJECT_ID);
+console.log('FIREBASE_STORAGE_BUCKET exists:', !!process.env.FIREBASE_STORAGE_BUCKET);
+console.log('FIREBASE_MESSAGING_SENDER_ID exists:', !!process.env.FIREBASE_MESSAGING_SENDER_ID);
+console.log('FIREBASE_APP_ID exists:', !!process.env.FIREBASE_APP_ID);
 
 // Initialize express app
 const app = express();
