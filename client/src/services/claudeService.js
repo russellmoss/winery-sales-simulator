@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '../config/api';
+import { v4 as uuidv4 } from 'uuid';
 
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
@@ -205,23 +206,22 @@ const getEndpoint = (path) => {
 };
 
 // Function to send message to Claude and handle audio response
-export const sendMessageToClaude = async (message, scenarioId) => {
+export const sendMessageToClaude = async (messages, scenario, customerProfile, assistantProfile, wineryProfile) => {
   try {
-    const endpoint = getEndpoint('message');
-    console.log('Sending message to Claude at endpoint:', endpoint);
-    
-    const response = await fetch(endpoint, {
+    // Send request to backend proxy
+    const response = await fetch(getEndpoint('message'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'x-user-id': 'user-' + uuidv4() // Add user ID for tracking
       },
       body: JSON.stringify({
-        scenario: scenarioId,
-        messages: [{
-          role: 'user',
-          content: message.content || message.message || message
-        }]
-      }),
+        messages,
+        scenario,
+        customerProfile,
+        assistantProfile,
+        wineryProfile
+      })
     });
 
     if (!response.ok) {
@@ -331,7 +331,34 @@ export const convertNarrativeToScenario = async (narrative) => {
   }
 };
 
+export const cleanupTranscription = async (transcription) => {
+  try {
+    const response = await fetch(getEndpoint('cleanup-transcription'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ transcription })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error response:', errorData);
+      throw new Error(`Failed to cleanup transcription: ${errorData.error || response.statusText}`);
+    }
+
+    const data = await response.json();
+    console.log('Transcription cleanup response:', data);
+
+    return data;
+  } catch (error) {
+    console.error('Error cleaning up transcription:', error);
+    throw new Error(`Failed to cleanup transcription: ${error.message}`);
+  }
+};
+
 export default {
   sendMessageToClaude,
-  convertNarrativeToScenario
+  convertNarrativeToScenario,
+  cleanupTranscription
 }; 
