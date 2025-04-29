@@ -3,7 +3,7 @@
  */
 
 // API configuration
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 // Function to get the correct endpoint based on environment
 export const getEndpoint = (path) => {
