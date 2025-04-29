@@ -248,11 +248,14 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
       const userId = 'user-' + uuidv4();
       console.log('Generated user ID:', userId);
 
+      // Format messages before sending
+      const formattedMessages = formatMessages(messages);
+
       // Log request details
       console.log('Sending request to Claude:', {
         endpoint: getEndpoint('message'),
         userId,
-        messageCount: messages.length,
+        messageCount: formattedMessages.length,
         scenario: scenario?.title,
         timestamp: new Date().toISOString()
       });
@@ -269,7 +272,7 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
         credentials: 'include',
         mode: 'cors',
         body: JSON.stringify({
-          messages,
+          messages: formattedMessages,
           scenario,
           customerProfile,
           assistantProfile,
