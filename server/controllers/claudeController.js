@@ -146,10 +146,17 @@ IMPORTANT: You are ALWAYS the customer in this conversation. The user is ALWAYS 
         messages: formattedMessages,
         temperature: 0.7
       });
+      
+      // Validate the response
+      if (!claudeResponse || !claudeResponse.content || !claudeResponse.content[0] || !claudeResponse.content[0].text) {
+        console.error('Invalid Claude API response:', claudeResponse);
+        throw new Error('Invalid response format from Claude API');
+      }
+      
       console.log('Claude API response received:', {
         id: claudeResponse.id,
         model: claudeResponse.model,
-        contentLength: claudeResponse.content ? claudeResponse.content.length : 0
+        contentLength: claudeResponse.content[0].text.length
       });
     } catch (error) {
       console.error('Error calling Claude API:', {
@@ -159,7 +166,14 @@ IMPORTANT: You are ALWAYS the customer in this conversation. The user is ALWAYS 
         stack: error.stack,
         response: error.response?.data
       });
-      throw error;
+      
+      // Return a more specific error message
+      return res.status(500).json({ 
+        error: 'Failed to process message', 
+        details: error.message,
+        type: error.name,
+        apiError: error.response?.data
+      });
     }
 
     const responseText = claudeResponse.content[0].text;
