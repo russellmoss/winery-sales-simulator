@@ -29,11 +29,30 @@ const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: [
-    process.env.FRONTEND_URL,
-    'http://localhost:3000',
-    /\.onrender\.com$/ // Allow all Render subdomains
-  ],
+  origin: function(origin, callback) {
+    const allowedOrigins = [
+      process.env.FRONTEND_URL,
+      'http://localhost:3000',
+      /\.onrender\.com$/
+    ];
+    
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if the origin is allowed
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (allowedOrigin instanceof RegExp) {
+        return allowedOrigin.test(origin);
+      }
+      return allowedOrigin === origin;
+    });
+    
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: [
     'Content-Type',
@@ -49,34 +68,13 @@ const corsOptions = {
   maxAge: 86400 // Cache preflight results for 24 hours
 };
 
-// Custom CORS middleware
-const corsMiddleware = (req, res, next) => {
-  // Set CORS headers for all responses
-  res.header('Access-Control-Allow-Origin', corsOptions.origin.includes(req.headers.origin) ? req.headers.origin : corsOptions.origin[0]);
-  res.header('Access-Control-Allow-Methods', corsOptions.methods.join(', '));
-  res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
-  res.header('Access-Control-Expose-Headers', corsOptions.exposedHeaders.join(', '));
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', corsOptions.maxAge);
-
-  // Handle preflight requests
-  if (req.method === 'OPTIONS') {
-    console.log('Handling preflight request:', {
-      origin: req.headers.origin,
-      method: req.headers['access-control-request-method'],
-      headers: req.headers['access-control-request-headers']
-    });
-    return res.status(200).end();
-  }
-
-  next();
-};
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
 // Apply middleware in correct order
 app.use(helmet()); // Security headers first
 app.use(morgan('dev')); // Logging
 app.use(express.json()); // Parse JSON bodies
-app.use(corsMiddleware); // CORS handling
 app.use(rateLimit({ // Rate limiting
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100 // limit each IP to 100 requests per windowMs
