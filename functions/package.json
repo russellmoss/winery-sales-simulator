@@ -1,0 +1,10 @@
+{
+  "name": "winery-sales-simulator-functions",
+  "version": "1.0.0",
+  "description": "Netlify Functions for Winery Sales Simulator",
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.6.0"
+  }
+} 

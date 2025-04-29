@@ -1,0 +1,11 @@
+{
+  "name": "winery-sales-simulator-scripts",
+  "version": "1.0.0",
+  "description": "Scripts for Winery Sales Simulator",
+  "main": "create-first-admin.js",
+  "dependencies": {
+    "firebase": "^10.7.0",
+    "firebase-admin": "^11.11.0",
+    "dotenv": "^16.3.1"
+  }
+} 

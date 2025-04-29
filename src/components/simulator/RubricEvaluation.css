@@ -1,0 +1,277 @@
+.rubric-evaluation {
+  display: flex;
+  flex-direction: column;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  max-width: 800px;
+  margin: 0 auto;
+  overflow: hidden;
+}
+
+.rubric-evaluation-header {
+  position: relative;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.rubric-evaluation-header h2 {
+  margin: 0;
+  color: #343a40;
+  font-size: 1.5rem;
+}
+
+.rubric-description {
+  margin: 10px 0 0;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.close-button {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.close-button:hover {
+  color: #343a40;
+}
+
+.rubric-evaluation-content {
+  padding: 20px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.rubric-criteria {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rubric-criterion {
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.criterion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.criterion-header h3 {
+  margin: 0;
+  color: #343a40;
+  font-size: 1.2rem;
+}
+
+.criterion-score {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.criterion-score label {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.criterion-score input {
+  width: 60px;
+  padding: 4px 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.max-score {
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.criterion-description {
+  margin: 10px 0;
+  color: #495057;
+  font-size: 0.95rem;
+}
+
+.evaluation-points {
+  margin: 15px 0;
+}
+
+.evaluation-points h4 {
+  margin: 0 0 8px;
+  color: #343a40;
+  font-size: 1rem;
+}
+
+.evaluation-points ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.evaluation-points li {
+  color: #495057;
+  font-size: 0.9rem;
+  margin-bottom: 4px;
+}
+
+.criterion-feedback {
+  margin-top: 15px;
+}
+
+.criterion-feedback label {
+  display: block;
+  margin-bottom: 5px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.criterion-feedback textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.overall-evaluation {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 6px;
+  border: 1px solid #e9ecef;
+}
+
+.overall-evaluation h3 {
+  margin: 0 0 15px;
+  color: #343a40;
+  font-size: 1.3rem;
+}
+
+.overall-score {
+  margin-bottom: 20px;
+}
+
+.overall-score label {
+  display: block;
+  margin-bottom: 8px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.score-display {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.score-value {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #343a40;
+  min-width: 60px;
+}
+
+.score-bar {
+  flex-grow: 1;
+  height: 20px;
+  background-color: #e9ecef;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.score-fill {
+  height: 100%;
+  background-color: #28a745;
+  transition: width 0.3s ease;
+}
+
+.overall-feedback {
+  margin-top: 15px;
+}
+
+.overall-feedback label {
+  display: block;
+  margin-bottom: 5px;
+  color: #6c757d;
+  font-size: 0.9rem;
+}
+
+.overall-feedback textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 8px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  resize: vertical;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.rubric-evaluation-footer {
+  padding: 15px 20px;
+  background-color: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  text-align: right;
+}
+
+.save-button {
+  padding: 8px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-button:hover {
+  background-color: #0056b3;
+}
+
+.save-button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .rubric-evaluation {
+    max-width: 100%;
+    margin: 0;
+    border-radius: 0;
+  }
+  
+  .criterion-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .score-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  
+  .score-value {
+    min-width: auto;
+  }
+} 

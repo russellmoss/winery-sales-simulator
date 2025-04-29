@@ -1,0 +1,9 @@
+{
+  "short_name": "Winery Simulator",
+  "name": "Winery Sales Simulator",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#722f37",
+  "background_color": "#ffffff"
+} 

@@ -1,0 +1,63 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Function to check if the user is an admin using custom claims
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    // Function to check if the user is an admin using Firestore role
+    function isAdminByRole() {
+      return request.auth != null && 
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    match /scenarios/{scenarioId} {
+      allow read: if request.auth != null;
+      allow write: if isAdmin() || isAdminByRole();
+      
+      match /interactions/{interactionId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+      
+      match /evaluations/{evaluationId} {
+        allow read: if request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+    
+    match /interactions/{interactionId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    match /evaluations/{evaluationId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    
+    match /users/{userId} {
+      // Allow users to read their own data
+      allow read: if request.auth != null && request.auth.uid == userId;
+      
+      // Allow admins to read and write all user data
+      allow read, write: if isAdmin() || isAdminByRole();
+      
+      // Allow users to update their own data except for role field
+      allow update: if request.auth != null && 
+                     request.auth.uid == userId && 
+                     !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+    
+    // Allow admins to list all users
+    match /users {
+      allow list: if isAdmin() || isAdminByRole();
+    }
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+} 
