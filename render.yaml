@@ -35,20 +35,20 @@ services:
   - type: web
     name: winery-sales-simulator-frontend
     env: static
-    buildCommand: cd client && npm install && npm run build
+    buildCommand: cd client && npm install && CI=false npm run build
     staticPublishPath: client/build
     envVars:
       - key: REACT_APP_API_URL
         value: "https://winery-sales-simulator-backend.onrender.com"
       - key: REACT_APP_FIREBASE_API_KEY
-        value: ""  # Leave empty, you'll set this in Render dashboard
+        value: "your-firebase-api-key-here"
       - key: REACT_APP_FIREBASE_AUTH_DOMAIN
-        value: ""  # Leave empty, you'll set this in Render dashboard
+        value: "your-firebase-auth-domain-here"
       - key: REACT_APP_FIREBASE_PROJECT_ID
-        value: ""  # Leave empty, you'll set this in Render dashboard
+        value: "your-firebase-project-id-here"
       - key: REACT_APP_FIREBASE_STORAGE_BUCKET
-        value: ""  # Leave empty, you'll set this in Render dashboard
+        value: "your-firebase-storage-bucket-here"
       - key: REACT_APP_FIREBASE_MESSAGING_SENDER_ID
-        value: ""  # Leave empty, you'll set this in Render dashboard
+        value: "your-firebase-messaging-sender-id-here"
       - key: REACT_APP_FIREBASE_APP_ID
-        value: ""  # Leave empty, you'll set this in Render dashboard 
+        value: "your-firebase-app-id-here" 
