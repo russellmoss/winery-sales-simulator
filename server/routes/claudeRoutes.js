@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { sendMessage, analyzeResponse, convertNarrativeToScenario } = require('../controllers/claudeController');
+const { sendMessage, analyzeResponse, convertNarrativeToScenario, testClaude } = require('../controllers/claudeController');
 const { evaluateConversation } = require('../controllers/evaluationController');
 const speechController = require('../controllers/speechController');
 const upload = require('../middleware/upload');
@@ -18,6 +18,9 @@ router.get('/test', (req, res) => {
   console.log('[ClaudeRoutes] Test route hit');
   res.json({ message: 'Claude routes are working!' });
 });
+
+// Test Claude API connectivity
+router.get('/test-claude', testClaude);
 
 // Route to send a message to Claude
 router.post('/message', sendMessage);

@@ -1,23 +1,83 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
 
-const claude = new Anthropic({
-  apiKey: process.env.CLAUDE_API_KEY,
-});
+// Initialize Anthropic client with error handling
+let claude;
+try {
+  claude = new Anthropic({
+    apiKey: process.env.CLAUDE_API_KEY,
+  });
+  console.log('Anthropic client initialized successfully');
+} catch (error) {
+  console.error('Failed to initialize Anthropic client:', error);
+  throw error;
+}
+
+// Test endpoint to verify Claude connectivity
+exports.testClaude = async (req, res) => {
+  try {
+    console.log('Testing Claude API connectivity');
+    
+    if (!process.env.CLAUDE_API_KEY) {
+      console.error('CLAUDE_API_KEY is not configured');
+      return res.status(500).json({ error: 'Claude API key not configured' });
+    }
+    
+    const response = await claude.messages.create({
+      model: 'claude-3-7-sonnet-20250219',
+      max_tokens: 100,
+      messages: [{ role: 'user', content: 'Hello, this is a test message.' }],
+      temperature: 0,
+    });
+    
+    console.log('Claude API test successful');
+    
+    return res.json({ 
+      status: 'success', 
+      message: 'Claude API connection successful', 
+      response: {
+        id: response.id,
+        model: response.model,
+        content: response.content
+      }
+    });
+  } catch (error) {
+    console.error('Claude API test failed:', {
+      message: error.message,
+      name: error.name,
+      status: error.status,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    
+    return res.status(500).json({ 
+      status: 'error', 
+      message: 'Claude API connection failed', 
+      error: error.message,
+      details: error.response?.data
+    });
+  }
+};
 
 // Send a message to Claude
 exports.sendMessage = async (req, res) => {
   try {
-    const { scenario, messages } = req.body;
+    // Add verbose logging
+    console.log('Claude API request received:', JSON.stringify({
+      body: req.body,
+      headers: req.headers,
+      env: {
+        CLAUDE_API_KEY: process.env.CLAUDE_API_KEY ? 'Set (redacted)' : 'Not set',
+        NODE_ENV: process.env.NODE_ENV
+      }
+    }));
 
-    console.log('Received request body:', JSON.stringify(req.body, null, 2));
+    const { scenario, messages } = req.body;
 
     if (!scenario || !messages) {
       console.error('Missing required fields:', { scenario: !!scenario, messages: !!messages });
       return res.status(400).json({ error: 'Missing required fields' });
     }
-
-    console.log('Received messages:', JSON.stringify(messages, null, 2));
 
     // Check if Claude API key is available
     if (!process.env.CLAUDE_API_KEY) {
@@ -34,7 +94,7 @@ exports.sendMessage = async (req, res) => {
     // Format messages for Claude
     const formattedMessages = messages.map(msg => ({
       role: msg.role,
-      content: msg.message || msg.content || '' // Ensure content is included
+      content: msg.message || msg.content || ''
     }));
 
     // Construct system prompt
@@ -76,57 +136,89 @@ IMPORTANT: You are ALWAYS the customer in this conversation. The user is ALWAYS 
 
     console.log('System prompt:', systemPrompt);
 
-    // Get response from Claude
-    const claudeResponse = await claude.messages.create({
-      model: 'claude-3-opus-20240229',
-      max_tokens: 1000,
-      system: systemPrompt, // Send system prompt as top-level parameter
-      messages: formattedMessages,
-      temperature: 0.7
-    });
+    // Get response from Claude with improved error handling
+    let claudeResponse;
+    try {
+      claudeResponse = await claude.messages.create({
+        model: 'claude-3-7-sonnet-20250219',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: formattedMessages,
+        temperature: 0.7
+      });
+      console.log('Claude API response received:', {
+        id: claudeResponse.id,
+        model: claudeResponse.model,
+        contentLength: claudeResponse.content ? claudeResponse.content.length : 0
+      });
+    } catch (error) {
+      console.error('Error calling Claude API:', {
+        message: error.message,
+        name: error.name,
+        status: error.status,
+        stack: error.stack,
+        response: error.response?.data
+      });
+      throw error;
+    }
 
     const responseText = claudeResponse.content[0].text;
-    console.log('Claude response:', responseText);
+    console.log('Claude response text:', responseText);
 
     // Convert text to speech using ElevenLabs
-    const voiceId = process.env[scenario.voiceId] || process.env.ELEVENLABS_ANN_VOICE_ID; // Use scenario's voice or default to Ann
+    const voiceId = process.env[scenario.voiceId] || process.env.ELEVENLABS_ANN_VOICE_ID;
     console.log('Using voice ID:', voiceId);
-    const elevenLabsResponse = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        text: responseText,
-        model_id: 'eleven_monolingual_v1',
-        voice_settings: {
-          stability: 0.75,
-          similarity_boost: 0.75,
-          style: 0.5,
-          use_speaker_boost: true,
-          optimize_streaming_latency: 3
-        }
-      },
-      {
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': process.env.ELEVENLABS_API_KEY
+
+    let audioData;
+    try {
+      const elevenLabsResponse = await axios.post(
+        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+        {
+          text: responseText,
+          model_id: 'eleven_monolingual_v1',
+          voice_settings: {
+            stability: 0.75,
+            similarity_boost: 0.75
+          }
         },
-        responseType: 'arraybuffer',
-        maxContentLength: Infinity,
-        maxBodyLength: Infinity
-      }
-    );
+        {
+          headers: {
+            'xi-api-key': process.env.ELEVENLABS_API_KEY,
+            'Content-Type': 'application/json'
+          },
+          responseType: 'arraybuffer'
+        }
+      );
+      audioData = Buffer.from(elevenLabsResponse.data).toString('base64');
+    } catch (error) {
+      console.error('Error calling ElevenLabs API:', {
+        message: error.message,
+        name: error.name,
+        status: error.status,
+        stack: error.stack,
+        response: error.response?.data
+      });
+      // Continue without audio if ElevenLabs fails
+      audioData = null;
+    }
 
-    // Send both the text response and audio data
-    res.json({
+    return res.json({
       response: responseText,
-      audio: Buffer.from(elevenLabsResponse.data).toString('base64')
+      audio: audioData
     });
-
   } catch (error) {
-    console.error('Error in sendMessage:', error);
-    res.status(500).json({ 
-      error: 'Failed to process message',
-      details: error.message
+    console.error('Error in sendMessage:', {
+      message: error.message,
+      name: error.name,
+      status: error.status,
+      stack: error.stack,
+      response: error.response?.data
+    });
+    
+    return res.status(500).json({ 
+      error: 'Failed to process message', 
+      details: error.message,
+      type: error.name
     });
   }
 };
