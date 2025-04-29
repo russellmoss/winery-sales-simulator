@@ -2,18 +2,18 @@
  * API configuration for the winery sales simulator
  */
 
-// API configuration
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// API Configuration
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+export const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
-// Function to get the correct endpoint based on environment
-export const getEndpoint = (path) => {
-  // In production, use the Render backend URL
-  if (process.env.NODE_ENV === 'production') {
-    return `${API_BASE_URL}/api/claude/${path}`;
-  }
-  
-  // In development, use the local Express server
-  return `http://localhost:5000/api/claude/${path}`;
+// API Endpoints
+export const getEndpoint = (endpoint) => {
+  const endpoints = {
+    message: `${API_BASE_URL}/api/message`,
+    'narrative-to-scenario': `${API_BASE_URL}/api/narrative-to-scenario`,
+    'cleanup-transcription': `${API_BASE_URL}/api/cleanup-transcription`
+  };
+  return endpoints[endpoint] || `${API_BASE_URL}/api/${endpoint}`;
 };
 
 // API endpoints

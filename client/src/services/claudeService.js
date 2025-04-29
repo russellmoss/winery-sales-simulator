@@ -1,6 +1,11 @@
 import { v4 as uuidv4 } from 'uuid';
 import { API_BASE_URL, getEndpoint } from '../config/api';
 
+// Base URL configuration
+const API_BASE_URL = process.env.NODE_ENV === 'development' 
+  ? ''  // In development, requests will be proxied to http://localhost:3001
+  : 'https://winery-sales-simulator.onrender.com';  // Production URL
+
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
   console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
@@ -194,45 +199,172 @@ export const playQueuedAudio = async () => {
 // Initialize audio playback system
 initializeAudioContext();
 
+// Constants for retry logic
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+const RETRY_MULTIPLIER = 2; // Exponential backoff
+
+// Helper function to delay execution
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Helper function to determine if an error is retryable
+const isRetryableError = (error) => {
+  // Network errors, timeouts, and 5xx server errors are retryable
+  return (
+    error.name === 'TypeError' || // Network errors
+    error.name === 'AbortError' || // Timeouts
+    (error.status && error.status >= 500) || // Server errors
+    error.message.includes('Network request failed') ||
+    error.message.includes('Failed to fetch')
+  );
+};
+
+// Helper function to get user-friendly error message
+const getUserFriendlyError = (error) => {
+  if (error.name === 'TypeError' || error.message.includes('Failed to fetch')) {
+    return 'Unable to connect to the server. Please check your internet connection and try again.';
+  }
+  if (error.status === 401) {
+    return 'Your session has expired. Please refresh the page and try again.';
+  }
+  if (error.status === 403) {
+    return 'You do not have permission to perform this action.';
+  }
+  if (error.status === 404) {
+    return 'The requested resource was not found.';
+  }
+  if (error.status >= 500) {
+    return 'The server is experiencing issues. Please try again later.';
+  }
+  if (error.message.includes('CORS')) {
+    return 'Unable to connect to the server due to security restrictions. Please try again later.';
+  }
+  return 'An unexpected error occurred. Please try again.';
+};
+
 // Function to send message to Claude and handle audio response
 export const sendMessageToClaude = async (messages, scenario, customerProfile, assistantProfile, wineryProfile) => {
-  try {
-    // Send request to backend proxy
-    const response = await fetch(getEndpoint('message'), {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': 'user-' + uuidv4() // Add user ID for tracking
-      },
-      body: JSON.stringify({
-        messages,
-        scenario,
-        customerProfile,
-        assistantProfile,
-        wineryProfile
-      })
-    });
+  let retryCount = 0;
+  let lastError = null;
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('Error response:', errorData);
-      throw new Error(`Failed to send message: ${errorData.error || response.statusText}`);
+  while (retryCount <= MAX_RETRIES) {
+    try {
+      // Generate a unique user ID for this session
+      const userId = 'user-' + uuidv4();
+      console.log('Generated user ID:', userId);
+
+      // Log request details
+      console.log('Sending request to Claude:', {
+        endpoint: getEndpoint('message'),
+        userId,
+        messageCount: messages.length,
+        scenario: scenario?.title,
+        timestamp: new Date().toISOString()
+      });
+
+      // Send request to backend proxy
+      const response = await fetch(`${API_BASE_URL}/api/claude`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': userId,
+          'Accept': 'application/json',
+          'x-requested-with': 'XMLHttpRequest'
+        },
+        credentials: 'include',
+        mode: 'cors',
+        body: JSON.stringify({
+          messages,
+          scenario,
+          customerProfile,
+          assistantProfile,
+          wineryProfile
+        })
+      });
+
+      // Log response details
+      console.log('Received response:', {
+        status: response.status,
+        statusText: response.statusText,
+        headers: Object.fromEntries(response.headers.entries()),
+        timestamp: new Date().toISOString()
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        const error = new Error(errorData.error || response.statusText);
+        error.status = response.status;
+        error.data = errorData;
+        
+        // Log error details
+        console.error('Error response:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          timestamp: new Date().toISOString()
+        });
+
+        // If error is retryable and we haven't exceeded max retries, retry
+        if (isRetryableError(error) && retryCount < MAX_RETRIES) {
+          retryCount++;
+          const delayTime = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, retryCount - 1);
+          console.log(`Retrying request in ${delayTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
+          await delay(delayTime);
+          continue;
+        }
+
+        throw error;
+      }
+
+      const data = await response.json();
+      console.log('Successfully processed response from Claude:', {
+        hasAudio: !!data.audio,
+        timestamp: new Date().toISOString()
+      });
+
+      // Handle audio data if present
+      if (data.audio) {
+        console.log('Audio data received, queuing for playback');
+        queueAudio(data.audio);
+      }
+
+      return data;
+    } catch (error) {
+      lastError = error;
+      
+      // Log error details
+      console.error('Error in sendMessageToClaude:', {
+        error: {
+          name: error.name,
+          message: error.message,
+          stack: error.stack,
+          status: error.status,
+          data: error.data
+        },
+        retryCount,
+        timestamp: new Date().toISOString()
+      });
+
+      // If error is retryable and we haven't exceeded max retries, retry
+      if (isRetryableError(error) && retryCount < MAX_RETRIES) {
+        retryCount++;
+        const delayTime = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, retryCount - 1);
+        console.log(`Retrying request in ${delayTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
+        await delay(delayTime);
+        continue;
+      }
+
+      // If we've exhausted retries or error is not retryable, throw user-friendly error
+      const userFriendlyError = new Error(getUserFriendlyError(error));
+      userFriendlyError.originalError = error;
+      throw userFriendlyError;
     }
-
-    const data = await response.json();
-    console.log('Received response from Claude:', data);
-
-    // Handle audio data if present
-    if (data.audio) {
-      console.log('Audio data received, queuing for playback');
-      queueAudio(data.audio);
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error sending message to Claude:', error);
-    throw new Error(`Failed to send message: ${error.message}`);
   }
+
+  // If we've exhausted all retries, throw the last error
+  const userFriendlyError = new Error(getUserFriendlyError(lastError));
+  userFriendlyError.originalError = lastError;
+  throw userFriendlyError;
 };
 
 /**
