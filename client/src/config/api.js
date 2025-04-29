@@ -9,11 +9,11 @@ export const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localh
 // API Endpoints
 export const getEndpoint = (endpoint) => {
   const endpoints = {
-    message: `${API_BASE_URL}/api/message`,
-    'narrative-to-scenario': `${API_BASE_URL}/api/narrative-to-scenario`,
-    'cleanup-transcription': `${API_BASE_URL}/api/cleanup-transcription`
+    message: `${API_BASE_URL}/api/claude/message`,
+    'narrative-to-scenario': `${API_BASE_URL}/api/claude/narrative-to-scenario`,
+    'cleanup-transcription': `${API_BASE_URL}/api/claude/cleanup-transcription`
   };
-  return endpoints[endpoint] || `${API_BASE_URL}/api/${endpoint}`;
+  return endpoints[endpoint] || `${API_BASE_URL}/api/claude/${endpoint}`;
 };
 
 // API endpoints
