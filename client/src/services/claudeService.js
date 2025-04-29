@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { getEndpoint } from '../config/api';
+import { API_BASE_URL, getEndpoint } from '../config/api';
 
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
