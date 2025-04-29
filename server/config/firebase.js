@@ -6,14 +6,17 @@ const { getAuth } = require('firebase/auth');
 const { getFirestore } = require('firebase/firestore');
 require('dotenv').config();
 
-// Debug logging
-console.log('Firebase Config Environment Variables:');
-console.log('API Key exists:', !!process.env.FIREBASE_API_KEY);
-console.log('Auth Domain exists:', !!process.env.FIREBASE_AUTH_DOMAIN);
-console.log('Project ID exists:', !!process.env.FIREBASE_PROJECT_ID);
-console.log('Storage Bucket exists:', !!process.env.FIREBASE_STORAGE_BUCKET);
-console.log('Messaging Sender ID exists:', !!process.env.FIREBASE_MESSAGING_SENDER_ID);
-console.log('App ID exists:', !!process.env.FIREBASE_APP_ID);
+// Debug logging - More detailed
+console.log('\n=== Detailed Environment Variable Debug ===');
+console.log('All environment variables:', Object.keys(process.env));
+console.log('\nFirebase Environment Variables:');
+console.log('FIREBASE_API_KEY length:', process.env.FIREBASE_API_KEY ? process.env.FIREBASE_API_KEY.length : 0);
+console.log('FIREBASE_AUTH_DOMAIN:', process.env.FIREBASE_AUTH_DOMAIN);
+console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID);
+console.log('FIREBASE_STORAGE_BUCKET:', process.env.FIREBASE_STORAGE_BUCKET);
+console.log('FIREBASE_MESSAGING_SENDER_ID:', process.env.FIREBASE_MESSAGING_SENDER_ID);
+console.log('FIREBASE_APP_ID:', process.env.FIREBASE_APP_ID);
+console.log('==========================================\n');
 
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY,
