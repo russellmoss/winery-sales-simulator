@@ -134,6 +134,23 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Root route handler
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'winery-sales-simulator-backend',
+    version: process.env.npm_package_version || '1.0.0',
+    environment: process.env.NODE_ENV || 'production',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      claude: '/api/claude/message',
+      narrative: '/api/claude/narrative-to-scenario',
+      cleanup: '/api/claude/cleanup-transcription'
+    }
+  });
+});
+
 // Error handling middleware
 app.use(errorHandler);
 
