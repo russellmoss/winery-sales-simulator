@@ -1,5 +1,7 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const axios = require('axios');
+const claudeApi = require('../utils/claudeApi');
+const { v4: uuidv4 } = require('uuid');
 
 // Initialize Anthropic client with error handling
 let claude;
@@ -13,227 +15,110 @@ try {
   throw error;
 }
 
-// Test endpoint to verify Claude connectivity
-exports.testClaude = async (req, res) => {
+// Retry configuration
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 1000; // 1 second
+
+// Helper function for retrying API calls
+const retryWithBackoff = async (fn, retries = MAX_RETRIES) => {
   try {
-    console.log('Testing Claude API connectivity');
-    
-    if (!process.env.CLAUDE_API_KEY) {
-      console.error('CLAUDE_API_KEY is not configured');
-      return res.status(500).json({ error: 'Claude API key not configured' });
+    return await fn();
+  } catch (error) {
+    if (retries > 0) {
+      console.log(`Retrying... ${retries} attempts remaining`);
+      await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+      return retryWithBackoff(fn, retries - 1);
     }
+    throw error;
+  }
+};
+
+// Health check endpoint
+exports.healthCheck = async (req, res) => {
+  const requestId = req.headers['x-request-id'] || uuidv4();
+  
+  try {
+    const isHealthy = await claudeApi.healthCheck();
     
-    const response = await claude.messages.create({
-      model: 'claude-3-7-sonnet-20250219',
-      max_tokens: 100,
-      messages: [{ role: 'user', content: 'Hello, this is a test message.' }],
-      temperature: 0,
-    });
-    
-    console.log('Claude API test successful');
-    
-    return res.json({ 
-      status: 'success', 
-      message: 'Claude API connection successful', 
-      response: {
-        id: response.id,
-        model: response.model,
-        content: response.content
-      }
+    res.json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      service: 'claude',
+      requestId,
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('Claude API test failed:', {
-      message: error.message,
-      name: error.name,
-      status: error.status,
-      stack: error.stack,
-      response: error.response?.data
+    console.error(`[${requestId}] Claude API health check failed:`, error);
+    next(error);
+  }
+};
+
+// Test Claude API connectivity
+exports.testClaude = async (req, res, next) => {
+  const requestId = req.headers['x-request-id'] || uuidv4();
+  
+  try {
+    const isHealthy = await claudeApi.healthCheck();
+    res.json({
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      service: 'claude',
+      requestId,
+      timestamp: new Date().toISOString()
     });
-    
-    return res.status(500).json({ 
-      status: 'error', 
-      message: 'Claude API connection failed', 
-      error: error.message,
-      details: error.response?.data
-    });
+  } catch (error) {
+    next(error);
   }
 };
 
 // Send a message to Claude
-exports.sendMessage = async (req, res) => {
+exports.sendMessage = async (req, res, next) => {
+  const requestId = req.headers['x-request-id'] || uuidv4();
+  
   try {
-    // Add verbose logging
-    console.log('Claude API request received:', JSON.stringify({
-      body: req.body,
-      headers: req.headers,
-      env: {
-        CLAUDE_API_KEY: process.env.CLAUDE_API_KEY ? 'Set (redacted)' : 'Not set',
-        NODE_ENV: process.env.NODE_ENV
+    // Validate request body
+    const { messages, options } = req.body;
+    
+    if (!messages || !Array.isArray(messages)) {
+      throw new Error('Invalid request: messages array is required');
+    }
+
+    // Validate each message
+    messages.forEach((msg, index) => {
+      if (!msg.role || !msg.content) {
+        throw new Error(`Invalid message at index ${index}: role and content are required`);
       }
-    }));
+    });
 
-    const { scenario, messages } = req.body;
+    // Log request details
+    console.log(`[${requestId}] Sending message to Claude API:`, {
+      messageCount: messages.length,
+      options
+    });
 
-    if (!scenario || !messages) {
-      console.error('Missing required fields:', { scenario: !!scenario, messages: !!messages });
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
+    // Send message using the Claude API utility
+    const response = await claudeApi.sendMessage(messages, options);
 
-    // Check if Claude API key is available
-    if (!process.env.CLAUDE_API_KEY) {
-      console.error('Claude API key is missing');
-      return res.status(500).json({ error: 'Claude API key is missing' });
-    }
+    // Log successful response
+    console.log(`[${requestId}] Claude API response received:`, {
+      responseId: response.id,
+      model: response.model,
+      usage: response.usage
+    });
 
-    // Check if ElevenLabs API key is available
-    if (!process.env.ELEVENLABS_API_KEY) {
-      console.error('ELEVENLABS_API_KEY is not set');
-      return res.status(500).json({ error: 'ElevenLabs API key not configured' });
-    }
-
-    // Format messages for Claude
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role,
-      content: msg.message || msg.content || ''
-    }));
-
-    // Construct system prompt
-    const systemPrompt = `You are a wine tasting room guest in a sales simulation scenario. Here are the details of your character and situation:
-
-Title: ${scenario.title}
-Description: ${scenario.description}
-
-Customer Profile:
-- Names: ${scenario.customerProfile.names.join(' and ')}
-- Home Location: ${scenario.customerProfile.homeLocation}
-- Occupation: ${scenario.customerProfile.occupation}
-- Visit Reason: ${scenario.customerProfile.visitReason}
-
-Personality & Knowledge:
-- Knowledge Level: ${scenario.clientPersonality.knowledgeLevel}
-- Budget Level: ${scenario.clientPersonality.budget}
-- Personality Traits: ${scenario.clientPersonality.traits.join(', ')}
-
-Wine Preferences:
-- Favorite Wines: ${scenario.clientPersonality.preferences.favoriteWines.join(', ')}
-- Dislikes: ${scenario.clientPersonality.preferences.dislikes.join(', ')}
-${scenario.clientPersonality.preferences.interests.length > 0 ? `- Interests: ${scenario.clientPersonality.preferences.interests.join(', ')}` : ''}
-
-Behavioral Instructions:
-${scenario.behavioralInstructions.generalBehavior.map(behavior => `- ${behavior}`).join('\n')}
-
-Tasting Behavior:
-${scenario.behavioralInstructions.tastingBehavior.map(behavior => `- ${behavior}`).join('\n')}
-
-Purchase Intentions:
-${scenario.behavioralInstructions.purchaseIntentions.map(intention => `- ${intention}`).join('\n')}
-
-Winery Context:
-- Name: ${scenario.wineryInfo.name}
-- Location: ${scenario.wineryInfo.location}
-
-IMPORTANT: You are ALWAYS the customer in this conversation. The user is ALWAYS the wine tasting room staff member. Never switch roles. Your responses should be natural and conversational while staying true to your character's background, preferences, and visit history.`;
-
-    console.log('System prompt:', systemPrompt);
-
-    // Get response from Claude with improved error handling
-    let claudeResponse;
-    try {
-      claudeResponse = await claude.messages.create({
-        model: 'claude-3-7-sonnet-20250219',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: formattedMessages,
-        temperature: 0.7
-      });
-      
-      // Validate the response
-      if (!claudeResponse || !claudeResponse.content || !claudeResponse.content[0] || !claudeResponse.content[0].text) {
-        console.error('Invalid Claude API response:', claudeResponse);
-        throw new Error('Invalid response format from Claude API');
-      }
-      
-      console.log('Claude API response received:', {
-        id: claudeResponse.id,
-        model: claudeResponse.model,
-        contentLength: claudeResponse.content[0].text.length
-      });
-    } catch (error) {
-      console.error('Error calling Claude API:', {
-        message: error.message,
-        name: error.name,
-        status: error.status,
-        stack: error.stack,
-        response: error.response?.data
-      });
-      
-      // Return a more specific error message
-      return res.status(500).json({ 
-        error: 'Failed to process message', 
-        details: error.message,
-        type: error.name,
-        apiError: error.response?.data
-      });
-    }
-
-    const responseText = claudeResponse.content[0].text;
-    console.log('Claude response text:', responseText);
-
-    // Convert text to speech using ElevenLabs
-    const voiceId = process.env[scenario.voiceId] || process.env.ELEVENLABS_ANN_VOICE_ID;
-    console.log('Using voice ID:', voiceId);
-
-    let audioData;
-    try {
-      const elevenLabsResponse = await axios.post(
-        `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-        {
-          text: responseText,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: {
-            stability: 0.75,
-            similarity_boost: 0.75
-          }
-        },
-        {
-          headers: {
-            'xi-api-key': process.env.ELEVENLABS_API_KEY,
-            'Content-Type': 'application/json'
-          },
-          responseType: 'arraybuffer'
-        }
-      );
-      audioData = Buffer.from(elevenLabsResponse.data).toString('base64');
-    } catch (error) {
-      console.error('Error calling ElevenLabs API:', {
-        message: error.message,
-        name: error.name,
-        status: error.status,
-        stack: error.stack,
-        response: error.response?.data
-      });
-      // Continue without audio if ElevenLabs fails
-      audioData = null;
-    }
-
-    return res.json({
-      response: responseText,
-      audio: audioData
+    res.json({
+      success: true,
+      response,
+      requestId
     });
   } catch (error) {
-    console.error('Error in sendMessage:', {
-      message: error.message,
-      name: error.name,
-      status: error.status,
+    // Log error details
+    console.error(`[${requestId}] Error sending message to Claude API:`, {
+      error: error.message,
       stack: error.stack,
-      response: error.response?.data
+      claudeError: error.claudeError
     });
-    
-    return res.status(500).json({ 
-      error: 'Failed to process message', 
-      details: error.message,
-      type: error.name
-    });
+
+    // Pass the error to the error handler middleware
+    next(error);
   }
 };
 

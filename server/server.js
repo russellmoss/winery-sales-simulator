@@ -9,6 +9,8 @@ const http = require('http');
 const fetch = require('node-fetch');
 const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
+const path = require('path');
+const { errorHandler } = require('./middleware/errorHandler');
 
 // Debug environment variables
 console.log('Environment variables loaded:');
@@ -67,27 +69,33 @@ async function makeClaudeRequest(requestBody, retryCount = 0) {
   }
 }
 
-// Configure CORS
-const allowedOrigins = process.env.NODE_ENV === 'production'
-  ? ['https://winery-sales-simulator-frontend.onrender.com']
-  : ['http://localhost:3000', 'http://localhost:8888'];
+// Request timing middleware
+app.use((req, res, next) => {
+  req._startTime = Date.now();
+  next();
+});
 
+// Security middleware
+app.use(helmet());
+
+// Logging middleware
+app.use(morgan('dev'));
+
+// Parse JSON bodies
+app.use(express.json());
+
+// CORS configuration
 const corsOptions = {
-  origin: function(origin, callback) {
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
+  origin: [
+    'http://localhost:3000',
+    'https://winery-sales-simulator.onrender.com',
+    'https://winery-sales-simulator-frontend.onrender.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'x-user-id'],
-  exposedHeaders: ['Content-Length', 'Content-Type']
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-request-id'],
+  credentials: true,
+  maxAge: 86400 // 24 hours
 };
-
-app.use(cors(corsOptions)); // Enable CORS with options
 
 // Add CORS debug middleware
 app.use((req, res, next) => {
@@ -100,69 +108,39 @@ app.use((req, res, next) => {
   if (req.method === 'OPTIONS') {
     console.log('Handling OPTIONS request');
     const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
+    if (corsOptions.origin.includes(origin)) {
       res.header('Access-Control-Allow-Origin', origin);
     }
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type', 'Authorization', 'Accept');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Max-Age', '86400'); // 24 hours
+    res.header('Access-Control-Allow-Methods', corsOptions.methods.join(', '));
+    res.header('Access-Control-Allow-Headers', corsOptions.allowedHeaders.join(', '));
+    res.header('Access-Control-Allow-Credentials', corsOptions.credentials.toString());
+    res.header('Access-Control-Max-Age', corsOptions.maxAge.toString());
     return res.status(204).end();
   }
   
   // For non-OPTIONS requests, set the appropriate CORS headers
   const origin = req.headers.origin;
-  if (allowedOrigins.includes(origin)) {
+  if (corsOptions.origin.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Credentials', corsOptions.credentials.toString());
   }
   
   next();
 });
 
-// Configure Helmet with custom CSP
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "blob:"],
-      connectSrc: ["'self'", "ws://localhost:5000", "http://localhost:5000", "http://localhost:3000"],
-      fontSrc: ["'self'", "data:"],
-      objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      frameSrc: ["'self'"],
-    },
-  },
-  crossOriginEmbedderPolicy: false,
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-
-app.use(morgan('dev')); // Logging
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true }));
-
-// Debug middleware to log all requests
-app.use((req, res, next) => {
-  console.log('=== Incoming Request ===');
-  console.log('Method:', req.method);
-  console.log('URL:', req.url);
-  console.log('Path:', req.path);
-  console.log('Base URL:', req.baseUrl);
-  console.log('Original URL:', req.originalUrl);
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body);
-  console.log('======================');
-  next();
-});
+app.use(cors(corsOptions));
 
 // Rate limiting
-const limiter = rateLimit({
+const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
-app.use('/api/', limiter);
+
+// Apply rate limiting to API routes
+app.use('/api/', apiLimiter);
 
 // Route debugging middleware
 app.use((req, res, next) => {
@@ -185,6 +163,31 @@ console.log('Mounting routes...');
 app.get('/test', (req, res) => {
   console.log('Test route hit');
   res.json({ message: 'Server is working!' });
+});
+
+// Health check endpoint with Claude API status
+app.get('/health', async (req, res) => {
+  const health = {
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    services: {
+      claude: !!process.env.CLAUDE_API_KEY,
+      elevenLabs: !!process.env.ELEVENLABS_API_KEY,
+      firebase: !!process.env.REACT_APP_FIREBASE_API_KEY
+    }
+  };
+
+  // If in development, add more detailed health information
+  if (process.env.NODE_ENV === 'development') {
+    health.details = {
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      nodeVersion: process.version
+    };
+  }
+
+  res.json(health);
 });
 
 // Import routes
@@ -210,28 +213,26 @@ app._router.stack.forEach(function(r){
   }
 });
 
-// 404 handler
-app.use((req, res) => {
-  console.log('404 Not Found:', req.method, req.url);
-  console.log('Path:', req.path);
-  console.log('Base URL:', req.baseUrl);
-  console.log('Original URL:', req.originalUrl);
-  res.status(404).json({ error: 'Not Found', path: req.url });
-});
-
 // Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(err.status || 500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : 'Internal Server Error',
-    stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+app.use(errorHandler);
+
+// Handle 404 routes
+app.use((req, res) => {
+  res.status(404).json({
+    error: 'Not Found',
+    message: `The requested resource ${req.originalUrl} was not found`,
+    requestId: req.headers['x-request-id']
   });
 });
 
 // Start server
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+  console.log('Environment variables status:', {
+    claude: !!process.env.CLAUDE_API_KEY,
+    elevenLabs: !!process.env.ELEVENLABS_API_KEY,
+    firebase: !!process.env.REACT_APP_FIREBASE_API_KEY
+  });
   console.log(`WebSocket server running on ws://localhost:${PORT}/ws`);
 }); 
