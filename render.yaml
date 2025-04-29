@@ -3,29 +3,63 @@ services:
   - type: web
     name: winery-sales-simulator-backend
     env: node
-    buildCommand: cd server && npm install && npm run build
+    buildCommand: cd server && npm install
     startCommand: cd server && npm start
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: PORT
         value: 3001
       - key: FIREBASE_API_KEY
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_API_KEY
       - key: FIREBASE_AUTH_DOMAIN
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_AUTH_DOMAIN
       - key: FIREBASE_PROJECT_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_PROJECT_ID
       - key: FIREBASE_STORAGE_BUCKET
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_STORAGE_BUCKET
       - key: FIREBASE_MESSAGING_SENDER_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_MESSAGING_SENDER_ID
       - key: FIREBASE_APP_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_APP_ID
       - key: CLAUDE_API_KEY
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: CLAUDE_API_KEY
     healthCheckPath: /api/health
-    autoDeploy: true
+    cors:
+      origins:
+        - https://winery-sales-simulator.onrender.com
+        - http://localhost:3000
+      methods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+      headers:
+        - Content-Type
+        - Authorization
+        - x-user-id
+      allowCredentials: true
+      maxAge: 86400
 
   # Frontend Service
   - type: web
@@ -34,25 +68,40 @@ services:
     buildCommand: cd client && npm install && npm run build
     startCommand: cd client && npm start
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: REACT_APP_API_URL
         fromService:
           name: winery-sales-simulator-backend
-          type: web
-          property: url
+          type: url
       - key: REACT_APP_FIREBASE_API_KEY
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_API_KEY
       - key: REACT_APP_FIREBASE_AUTH_DOMAIN
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_AUTH_DOMAIN
       - key: REACT_APP_FIREBASE_PROJECT_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_PROJECT_ID
       - key: REACT_APP_FIREBASE_STORAGE_BUCKET
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_STORAGE_BUCKET
       - key: REACT_APP_FIREBASE_MESSAGING_SENDER_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_MESSAGING_SENDER_ID
       - key: REACT_APP_FIREBASE_APP_ID
-        sync: false
+        fromService:
+          name: winery-sales-simulator-backend
+          type: env
+          property: FIREBASE_APP_ID
     healthCheckPath: /health
     autoDeploy: true
     dependsOn:
