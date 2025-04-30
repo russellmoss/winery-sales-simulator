@@ -2,19 +2,20 @@
  * API configuration for the winery sales simulator
  */
 
-// API Configuration
-export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
-export const FRONTEND_URL = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
+// Get the base URL from environment variable or use the current origin
+const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin;
 
-// API Endpoints
+// Function to get API endpoints
 export const getEndpoint = (endpoint) => {
-  const endpoints = {
+  const ENDPOINTS = {
     message: `${API_BASE_URL}/api/claude/message`,
     'narrative-to-scenario': `${API_BASE_URL}/api/claude/narrative-to-scenario`,
     'cleanup-transcription': `${API_BASE_URL}/api/claude/cleanup-transcription`
   };
-  return endpoints[endpoint] || `${API_BASE_URL}/api/claude/${endpoint}`;
+  return ENDPOINTS[endpoint] || `${API_BASE_URL}/api/${endpoint}`;
 };
+
+export { API_BASE_URL };
 
 // API endpoints
 export const ENDPOINTS = {
@@ -27,7 +28,6 @@ export const ENDPOINTS = {
 };
 
 export default {
-  API_BASE_URL,
   getEndpoint,
   ENDPOINTS
 }; 

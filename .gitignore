@@ -87,3 +87,4 @@ ui-debug.log*
 *.mp3
 *.ogg
 *.m4a
+.vercel
