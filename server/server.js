@@ -171,8 +171,25 @@ const server = http.createServer(app);
 // WebSocket setup
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
-server.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
-  console.log(`API URL: ${process.env.API_URL}`);
-  console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
-}); 
+// For Vercel deployment
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files
+  app.use(express.static(path.join(__dirname, '../client/build')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
+
+// Only start the server if not running on Vercel
+if (process.env.NODE_ENV !== 'production') {
+  server.listen(PORT, () => {
+    console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${PORT}`);
+    console.log(`API URL: ${process.env.API_URL}`);
+    console.log(`Frontend URL: ${process.env.FRONTEND_URL}`);
+  });
+}
+
+// Export the express app for Vercel
+module.exports = app; 
