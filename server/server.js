@@ -100,6 +100,15 @@ const elevenlabsRoutes = require('./routes/elevenlabsRoutes');
 app.use('/api/claude', claudeRoutes);
 app.use('/api/elevenlabs', elevenlabsRoutes);
 
+// Test endpoint to verify API functionality
+app.get('/api/test', (req, res) => {
+  res.json({
+    message: 'API is working!',
+    env: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Test endpoint to verify CORS functionality
 app.get('/api/test-cors', (req, res) => {
   console.log('Test CORS endpoint hit with headers:', req.headers);
@@ -177,6 +186,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
   
   // Handle React routing, return all requests to React app
+  // This should be the last route to ensure API routes are handled first
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
