@@ -5,7 +5,7 @@
 const API_CONFIG = {
   // Base URL for API requests
   BASE_URL: process.env.NODE_ENV === 'production'
-    ? 'https://winery-sales-simulator.vercel.app/api'
+    ? `${window.location.origin}/api`
     : 'http://localhost:5000/api',
 
   // Claude API endpoints
