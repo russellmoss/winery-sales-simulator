@@ -41,7 +41,12 @@ router.get('/narrative-to-scenario', (req, res) => {
 });
 
 // Route to convert narrative to scenario
-router.post('/narrative-to-scenario', convertNarrativeToScenario);
+router.post('/narrative-to-scenario', (req, res, next) => {
+  console.log('[ClaudeRoutes] POST narrative-to-scenario route hit');
+  console.log('[ClaudeRoutes] Request body:', req.body);
+  console.log('[ClaudeRoutes] Request headers:', req.headers);
+  convertNarrativeToScenario(req, res, next);
+});
 
 // Route to evaluate conversation
 router.post('/evaluate', evaluateConversation);
