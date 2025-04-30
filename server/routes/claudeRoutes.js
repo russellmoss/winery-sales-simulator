@@ -23,7 +23,16 @@ router.get('/test', (req, res) => {
 router.get('/test-claude', testClaude);
 
 // Route to send a message to Claude
-router.post('/message', sendMessage);
+router.post('/message', (req, res, next) => {
+  console.log('[ClaudeRoutes] POST /message route hit');
+  console.log('[ClaudeRoutes] Request headers:', req.headers);
+  console.log('[ClaudeRoutes] Request body:', req.body);
+  console.log('[ClaudeRoutes] Environment variables:', {
+    CLAUDE_API_KEY: process.env.CLAUDE_API_KEY ? 'exists' : 'missing',
+    NODE_ENV: process.env.NODE_ENV
+  });
+  sendMessage(req, res, next);
+});
 
 // Route to analyze a response
 router.post('/analyze', (req, res, next) => {
