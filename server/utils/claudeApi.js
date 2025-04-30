@@ -26,9 +26,13 @@ class ClaudeAPI {
           headers: {
             'x-api-key': this.apiKey,
             'anthropic-version': '2023-06-01',
-            'content-type': 'application/json'
+            'content-type': 'application/json',
+            'anthropic-beta': 'messages-2023-12-15'
           },
-          data
+          data: {
+            model: this.model,
+            ...data
+          }
         });
 
         return response.data;
@@ -68,18 +72,45 @@ class ClaudeAPI {
 
   async sendMessage(messages) {
     try {
+      // Ensure messages is an array
+      if (!Array.isArray(messages)) {
+        throw new Error('Messages must be an array');
+      }
+
+      // Extract system message if present
+      let systemMessage = '';
+      const userMessages = messages.filter(msg => {
+        if (msg.role === 'system') {
+          systemMessage = msg.content;
+          return false;
+        }
+        return true;
+      });
+
+      // Ensure each message has role and content
+      userMessages.forEach((msg, index) => {
+        if (!msg.role || !msg.content) {
+          throw new Error(`Message at index ${index} is missing required fields (role, content)`);
+        }
+      });
+
       const response = await this.makeRequest('/messages', {
-        model: this.model,
-        messages,
+        messages: userMessages,
+        system: systemMessage,
         max_tokens: 1000
       });
+
+      if (!response.content || !response.content[0] || !response.content[0].text) {
+        throw new Error('Invalid response format from Claude API');
+      }
 
       return {
         success: true,
         messageId: uuidv4(),
         model: this.model,
         response: response.content[0].text,
-        usage: response.usage
+        usage: response.usage || {},
+        audio: null
       };
     } catch (error) {
       console.error('Claude API Error:', {

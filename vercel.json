@@ -1,15 +1,39 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm install && npm run build",
-  "outputDirectory": "client/build",
+  "builds": [
+    {
+      "src": "client/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "buildCommand": "npm run build",
+        "outputDirectory": "build"
+      }
+    },
+    {
+      "src": "server/server.js",
+      "use": "@vercel/node"
+    }
+  ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/api/$1"
+      "dest": "server/server.js"
     },
     {
       "src": "/(.*)",
       "dest": "client/build/$1"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "CLAUDE_API_KEY": "@claude_api_key",
+    "ELEVENLABS_API_KEY": "@elevenlabs_api_key",
+    "ELEVENLABS_ANN_VOICE_ID": "@elevenlabs_ann_voice_id",
+    "ELEVENLABS_GABRIELLA_VOICE_ID": "@elevenlabs_gabriella_voice_id",
+    "ELEVENLABS_RUSSELL_VOICE_ID": "@elevenlabs_russell_voice_id",
+    "ELEVENLABS_MIKE_VOICE_ID": "@elevenlabs_mike_voice_id",
+    "FIREBASE_PROJECT_ID": "@firebase_project_id",
+    "FIREBASE_PRIVATE_KEY": "@firebase_private_key",
+    "FIREBASE_CLIENT_EMAIL": "@firebase_client_email"
+  }
 } 

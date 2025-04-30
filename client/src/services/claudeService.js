@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { API_BASE_URL, getEndpoint } from '../config/api';
+import { API_CONFIG, getEndpoint } from '../config/api';
 
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
@@ -181,13 +181,22 @@ const playNextAudio = () => {
 };
 
 // Function to manually trigger audio playback
-export const playQueuedAudio = async () => {
-  if (audioElement && audioElement.paused && !isMuted) {
-    try {
-      await playAudioElement(audioElement);
-    } catch (error) {
-      console.error('Error playing queued audio:', error);
+export const playQueuedAudio = async (audioUrl) => {
+  if (!audioUrl) return;
+  
+  try {
+    if (audioElement) {
+      audioElement.pause();
+      audioElement.src = '';
     }
+    
+    audioElement = new Audio(audioUrl);
+    audioElement.muted = isMuted;
+    
+    await audioElement.play();
+    console.log('[ClaudeService] Playing audio:', audioUrl);
+  } catch (error) {
+    console.error('[ClaudeService] Error playing audio:', error);
   }
 };
 
@@ -238,41 +247,71 @@ const getUserFriendlyError = (error) => {
 };
 
 // Function to send message to Claude and handle audio response
-export const sendMessageToClaude = async (messages, scenario, customerProfile, assistantProfile, wineryProfile) => {
-  let retryCount = 0;
+export const sendMessageToClaude = async ({
+  messages,
+  scenario,
+  customerProfile,
+  assistantProfile,
+  wineryProfile
+}) => {
+  const userId = `user-${uuidv4()}`;
+  console.log('[ClaudeService] Starting message send:', {
+    userId,
+    messageCount: messages?.length || 0,
+    scenario: scenario?.title,
+    apiBaseUrl: API_CONFIG.BASE_URL,
+    endpoint: `${API_CONFIG.BASE_URL}/claude/send`,
+    timestamp: new Date().toISOString()
+  });
+
+  if (!Array.isArray(messages)) {
+    throw new Error('Messages must be an array');
+  }
+
+  if (messages.length === 0) {
+    throw new Error('Messages array cannot be empty');
+  }
+
+  // Validate each message has required fields
+  messages.forEach((msg, index) => {
+    if (!msg.role || !msg.content) {
+      throw new Error(`Message at index ${index} is missing required fields (role or content)`);
+    }
+  });
+
   let lastError = null;
-
-  while (retryCount <= MAX_RETRIES) {
+  for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      // Generate a unique user ID for this session
-      const userId = 'user-' + uuidv4();
-      console.log('Generated user ID:', userId);
-
-      // Format messages before sending
-      const formattedMessages = formatMessages(messages);
-
-      // Log request details
-      console.log('Sending request to Claude:', {
-        endpoint: getEndpoint('message'),
+      const endpoint = `${API_CONFIG.BASE_URL}/claude/message`;
+      console.log(`[ClaudeService] Attempt ${attempt}/3:`, {
         userId,
-        messageCount: formattedMessages.length,
-        scenario: scenario?.title,
+        endpoint,
+        requestConfig: {
+          method: 'POST',
+          headers: API_CONFIG.HEADERS,
+          credentials: 'include',
+          mode: 'cors'
+        },
         timestamp: new Date().toISOString()
       });
 
-      // Send request to backend proxy
-      const response = await fetch(`${API_BASE_URL}/api/claude/message`, {
+      // Create system prompt from scenario
+      const systemPrompt = createSystemPrompt(scenario);
+      const formattedMessages = formatMessages(messages);
+      
+      // Add system prompt as the first message
+      const messagesWithSystem = [
+        { role: 'system', content: systemPrompt },
+        ...formattedMessages
+      ];
+
+      const response = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': userId,
-          'Accept': 'application/json',
-          'x-requested-with': 'XMLHttpRequest'
-        },
+        headers: API_CONFIG.HEADERS,
         credentials: 'include',
         mode: 'cors',
         body: JSON.stringify({
-          messages: formattedMessages,
+          messages: messagesWithSystem,
           scenario,
           customerProfile,
           assistantProfile,
@@ -280,8 +319,7 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
         })
       });
 
-      // Log response details
-      console.log('Received response:', {
+      console.log(`[ClaudeService] Response received (attempt ${attempt}):`, {
         status: response.status,
         statusText: response.statusText,
         headers: Object.fromEntries(response.headers.entries()),
@@ -290,79 +328,40 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        const error = new Error(errorData.error || response.statusText);
-        error.status = response.status;
-        error.data = errorData;
-        
-        // Log error details
-        console.error('Error response:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorData,
-          timestamp: new Date().toISOString()
-        });
-
-        // If error is retryable and we haven't exceeded max retries, retry
-        if (isRetryableError(error) && retryCount < MAX_RETRIES) {
-          retryCount++;
-          const delayTime = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, retryCount - 1);
-          console.log(`Retrying request in ${delayTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
-          await delay(delayTime);
-          continue;
-        }
-
-        throw error;
+        throw new Error(
+          `Server returned ${response.status}: ${errorData.details || response.statusText}`
+        );
       }
 
       const data = await response.json();
-      console.log('Successfully processed response from Claude:', {
-        hasAudio: !!data.audio,
+      console.log('[ClaudeService] Successfully received response:', {
+        userId,
+        hasAudio: !!data.audioUrl,
         timestamp: new Date().toISOString()
       });
 
-      // Handle audio data if present
-      if (data.audio) {
-        console.log('Audio data received, queuing for playback');
-        queueAudio(data.audio);
+      // If we have audio, play it
+      if (data.audioUrl) {
+        console.log('[ClaudeService] Playing audio response');
+        await playQueuedAudio(data.audioUrl);
       }
 
       return data;
     } catch (error) {
+      console.error(`[ClaudeService] Error on attempt ${attempt}:`, error);
       lastError = error;
       
-      // Log error details
-      console.error('Error in sendMessageToClaude:', {
-        error: {
-          name: error.name,
-          message: error.message,
-          stack: error.stack,
-          status: error.status,
-          data: error.data
-        },
-        retryCount,
-        timestamp: new Date().toISOString()
-      });
-
-      // If error is retryable and we haven't exceeded max retries, retry
-      if (isRetryableError(error) && retryCount < MAX_RETRIES) {
-        retryCount++;
-        const delayTime = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, retryCount - 1);
-        console.log(`Retrying request in ${delayTime}ms (attempt ${retryCount}/${MAX_RETRIES})`);
-        await delay(delayTime);
-        continue;
+      if (!isRetryableError(error) || attempt === 3) {
+        throw error;
       }
-
-      // If we've exhausted retries or error is not retryable, throw user-friendly error
-      const userFriendlyError = new Error(getUserFriendlyError(error));
-      userFriendlyError.originalError = error;
-      throw userFriendlyError;
+      
+      const delayMs = RETRY_DELAY * Math.pow(RETRY_MULTIPLIER, attempt - 1);
+      console.log(`[ClaudeService] Retrying in ${delayMs}ms...`);
+      await delay(delayMs);
     }
   }
 
-  // If we've exhausted all retries, throw the last error
-  const userFriendlyError = new Error(getUserFriendlyError(lastError));
-  userFriendlyError.originalError = lastError;
-  throw userFriendlyError;
+  throw lastError;
 };
 
 /**
@@ -373,10 +372,10 @@ export const sendMessageToClaude = async (messages, scenario, customerProfile, a
 export const convertNarrativeToScenario = async (narrative) => {
   console.log('=== convertNarrativeToScenario START ===');
   
-  console.log('API_BASE_URL:', API_BASE_URL);
+  console.log('API_BASE_URL:', API_CONFIG.BASE_URL);
   console.log('Environment:', process.env.NODE_ENV);
   
-  const endpoint = getEndpoint('narrative-to-scenario');
+  const endpoint = `${API_CONFIG.BASE_URL}/claude/narrative-to-scenario`;
   console.log('Using endpoint:', endpoint);
   console.log('Narrative length:', narrative.length);
   console.log('Narrative preview:', narrative.substring(0, 100) + '...');
@@ -452,7 +451,8 @@ export const convertNarrativeToScenario = async (narrative) => {
 
 export const cleanupTranscription = async (transcription) => {
   try {
-    const response = await fetch(getEndpoint('cleanup-transcription'), {
+    const endpoint = `${API_CONFIG.BASE_URL}/claude/cleanup-transcription`;
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

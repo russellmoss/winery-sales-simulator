@@ -41,6 +41,7 @@ function SimulatorChat() {
   const [showEvaluation, setShowEvaluation] = useState(false);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [evaluationError, setEvaluationError] = useState(null);
+  const [isMuted, setIsMuted] = useState(false);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -64,146 +65,85 @@ function SimulatorChat() {
     }
   }, []);
 
-  const handleSendMessage = async (e) => {
-    e.preventDefault();
-    if (!message.trim()) return;
-
-    console.log('Starting to send message:', {
-      messageLength: message.length,
-      scenarioId: currentScenario?.id,
-      interactionsCount: interactions.length
-    });
-
-    setIsLoading(true);
-    setChatError(null);
-    
-    // Store the current message and clear input immediately for better UX
-    const currentUserMessage = message;
-    setMessage('');
+  const handleSendMessage = async () => {
+    if (!message.trim() || isLoading) return;
 
     try {
-      console.log('Adding user message to Firestore...');
-      // Add user message and handle any errors
-      try {
-        await addInteraction(currentUserMessage, 'user');
-      } catch (err) {
-        console.error('Failed to save user message to Firestore:', err);
-        setChatError('Your message was sent but could not be saved to the database. The conversation will continue in-memory only.');
-      }
-      
-      setIsTyping(true);
+      setIsLoading(true);
+      setChatError(null);
 
-      console.log('Getting response from Claude...', {
-        currentScenario: {
-          id: currentScenario?.id,
-          title: currentScenario?.title
-        },
-        interactionsCount: interactions.length
+      const currentUserMessage = message.trim();
+      setMessage('');
+
+      console.log('Starting to send message:', {
+        message: currentUserMessage,
+        scenarioId: currentScenario.id,
+        timestamp: new Date().toISOString()
       });
+
+      // Add user message to Firestore
+      console.log('Adding user message to Firestore...');
+      const userInteraction = await addInteraction({
+        message: currentUserMessage,
+        role: 'user',
+        timestamp: new Date().toISOString()
+      });
+
+      // Format messages array for Claude
+      const messages = [
+        {
+          role: 'user',
+          content: currentUserMessage
+        }
+      ];
 
       // Get response from Claude
-      let claudeResponse;
-      try {
-        claudeResponse = await sendMessageToClaude(
-          currentUserMessage,
-          currentScenario
-        );
-
-        console.log('Received response from Claude:', {
-          responseType: typeof claudeResponse,
-          responseValue: claudeResponse,
-          responseLength: claudeResponse?.length,
-          responseKeys: claudeResponse ? Object.keys(claudeResponse) : [],
-          firstFewWords: typeof claudeResponse === 'string' ? claudeResponse.split(' ').slice(0, 5).join(' ') + '...' : 'Not a string'
-        });
-      } catch (claudeError) {
-        console.error('Error getting response from Claude:', claudeError);
-        
-        // If we have audio playing but no text, create a placeholder message
-        if (claudeError.message.includes('Could not extract text response')) {
-          claudeResponse = "I apologize, but I'm having trouble displaying my response. However, you should be able to hear my answer through the audio.";
-        } else {
-          throw claudeError;
-        }
-      }
-
-      // Add Claude's response - ensure we're passing a string message
-      try {
-        if (!claudeResponse) {
-          throw new Error('No response received from Claude');
-        }
-
-        let responseMessage;
-        if (typeof claudeResponse === 'string') {
-          responseMessage = claudeResponse;
-        } else if (typeof claudeResponse === 'object') {
-          // Try to extract the message from various possible object structures
-          responseMessage = claudeResponse.text || claudeResponse.content || claudeResponse.message;
-          
-          if (!responseMessage && claudeResponse.response) {
-            responseMessage = typeof claudeResponse.response === 'string' ? 
-              claudeResponse.response : 
-              claudeResponse.response.text || claudeResponse.response.content || claudeResponse.response.message;
-          }
-          
-          if (!responseMessage) {
-            console.error('Could not find message in response object:', claudeResponse);
-            responseMessage = JSON.stringify(claudeResponse);
-          }
-        } else {
-          responseMessage = String(claudeResponse);
-        }
-
-        if (!responseMessage) {
-          throw new Error('Could not extract message from Claude response');
-        }
-
-        console.log('Saving Claude response to Firestore:', {
-          messageLength: responseMessage.length,
-          firstFewWords: responseMessage.split(' ').slice(0, 5).join(' ') + '...'
-        });
-
-        // Only use addInteraction to update the state
-        await addInteraction(responseMessage, 'assistant');
-        
-      } catch (err) {
-        console.error('Failed to save Claude response to Firestore:', {
-          error: err,
-          errorName: err.name,
-          errorMessage: err.message,
-          errorStack: err.stack,
-          response: claudeResponse
-        });
-        setChatError('The response was received but could not be saved to the database. The conversation will continue in-memory only.');
-      }
-
-    } catch (err) {
-      console.error('Error in handleSendMessage:', {
-        error: err,
-        errorName: err.name,
-        errorMessage: err.message,
-        errorStack: err.stack,
-        state: {
-          isLoading,
-          isTyping,
-          hasError: !!chatError,
-          interactionsCount: interactions.length
-        }
+      console.log('Getting response from Claude...', {
+        scenarioId: currentScenario.id,
+        timestamp: new Date().toISOString()
       });
 
-      // Show error but don't clear the conversation
-      setChatError(`Error: ${err.message}. The conversation will continue but some messages may not be saved.`);
-    } finally {
-      setIsTyping(false);
-      setIsLoading(false);
+      const claudeResponse = await sendMessageToClaude({
+        messages,
+        scenario: currentScenario,
+        customerProfile: currentScenario.customerProfile,
+        assistantProfile: currentScenario.assistantProfile,
+        wineryProfile: currentScenario.wineryInfo
+      });
+
+      console.log('Received response from Claude:', claudeResponse);
+
+      if (!claudeResponse || !claudeResponse.response) {
+        throw new Error('Invalid response from Claude');
+      }
+
+      // Add Claude's response to Firestore
+      console.log('Saving Claude response to Firestore:', {
+        response: claudeResponse.response,
+        timestamp: new Date().toISOString()
+      });
+
+      await addInteraction({
+        message: claudeResponse.response,
+        role: 'assistant',
+        timestamp: new Date().toISOString()
+      });
+
+      // Play audio narration if available
+      if (claudeResponse.audio) {
+        console.log('Playing audio narration:', claudeResponse.audio);
+        await playQueuedAudio(claudeResponse.audio);
+      }
+
       console.log('Message sending process completed', {
-        finalState: {
-          isLoading: false,
-          isTyping: false,
-          hasError: !!chatError,
-          interactionsCount: interactions.length
-        }
+        success: true,
+        timestamp: new Date().toISOString()
       });
+    } catch (error) {
+      console.error('Error in handleSendMessage:', error);
+      setChatError(error.message || 'Failed to send message');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -280,7 +220,8 @@ function SimulatorChat() {
 
   const handleToggleMute = () => {
     const newMuteState = toggleMute();
-    // No need to update local state since we're using the global state
+    console.log('Mute state toggled:', newMuteState);
+    setIsMuted(newMuteState);
   };
 
   const handleEndSimulation = () => {
@@ -398,6 +339,64 @@ function SimulatorChat() {
     setNeedsManualPlay(false);
   };
 
+  // Add thinking indicator component
+  const ThinkingIndicator = () => (
+    <div className="thinking-indicator" style={{
+      display: 'flex',
+      alignItems: 'center',
+      padding: '10px',
+      margin: '10px 0',
+      backgroundColor: '#f8f9fa',
+      borderRadius: '8px',
+      fontStyle: 'italic',
+      color: '#6c757d'
+    }}>
+      <div className="thinking-dots" style={{
+        marginRight: '8px',
+        display: 'flex',
+        gap: '4px'
+      }}>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: '#6c757d',
+          animation: 'bounce 1.4s infinite ease-in-out'
+        }}></div>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: '#6c757d',
+          animation: 'bounce 1.4s infinite ease-in-out',
+          animationDelay: '0.2s'
+        }}></div>
+        <div style={{
+          width: '8px',
+          height: '8px',
+          borderRadius: '50%',
+          backgroundColor: '#6c757d',
+          animation: 'bounce 1.4s infinite ease-in-out',
+          animationDelay: '0.4s'
+        }}></div>
+      </div>
+      Thinking...
+    </div>
+  );
+
+  // Add keyframes for the animation
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes bounce {
+        0%, 80%, 100% { transform: scale(0); }
+        40% { transform: scale(1); }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   if (loading) {
     return <div className="loading">Loading chat...</div>;
   }
@@ -451,21 +450,7 @@ function SimulatorChat() {
             {interaction.message}
           </div>
         ))}
-        {isTyping && (
-          <div className="message message-assistant typing">
-            Claude is typing...
-          </div>
-        )}
-        {isMobile && needsManualPlay && (
-          <div className="audio-controls">
-            <button 
-              className="play-audio-button"
-              onClick={handleManualPlayAudio}
-            >
-              <i className="fas fa-play"></i> Play Response Audio
-            </button>
-          </div>
-        )}
+        {isLoading && <ThinkingIndicator />}
         <div ref={messagesEndRef} />
       </div>
 
@@ -476,8 +461,8 @@ function SimulatorChat() {
           onClick={handleToggleMute}
           className="mute-button"
         >
-          <i className="fas fa-volume-up"></i>
-          Mute
+          <i className={`fas fa-volume-${isMuted ? 'mute' : 'up'}`}></i>
+          {isMuted ? 'Unmute' : 'Mute'}
         </button>
       </div>
 
@@ -525,7 +510,7 @@ function SimulatorChat() {
 
       <audio 
         ref={audioRef}
-        onEnded={handleAudioEnded}
+        onEnded={() => setShouldStartRecording(true)}
         style={{ display: 'none' }}
       />
 

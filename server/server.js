@@ -11,62 +11,27 @@ const { v4: uuidv4 } = require('uuid');
 const axios = require('axios');
 const path = require('path');
 const { errorHandler } = require('./middleware/errorHandler');
+const { Anthropic } = require('@anthropic-ai/sdk');
 
 // Debug environment variables
-console.log('Environment variables loaded:');
-console.log('PORT:', process.env.PORT);
-console.log('CLAUDE_API_KEY exists:', !!process.env.CLAUDE_API_KEY);
-console.log('Firebase Environment Variables:');
-console.log('FIREBASE_API_KEY exists:', !!process.env.FIREBASE_API_KEY);
-console.log('FIREBASE_AUTH_DOMAIN exists:', !!process.env.FIREBASE_AUTH_DOMAIN);
-console.log('FIREBASE_PROJECT_ID exists:', !!process.env.FIREBASE_PROJECT_ID);
-console.log('FIREBASE_STORAGE_BUCKET exists:', !!process.env.FIREBASE_STORAGE_BUCKET);
-console.log('FIREBASE_MESSAGING_SENDER_ID exists:', !!process.env.FIREBASE_MESSAGING_SENDER_ID);
-console.log('FIREBASE_APP_ID exists:', !!process.env.FIREBASE_APP_ID);
+console.log('Environment variables loaded:', {
+  NODE_ENV: process.env.NODE_ENV,
+  CLAUDE_API_KEY: process.env.CLAUDE_API_KEY ? 'Set' : 'Not Set',
+  ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY ? 'Set' : 'Not Set',
+  FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ? 'Set' : 'Not Set'
+});
 
 // Initialize express app
 const app = express();
 
 // CORS configuration
 const corsOptions = {
-  origin: function(origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL,
-      'http://localhost:3000',
-      /\.vercel\.app$/,
-      /\.onrender\.com$/
-    ];
-    
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Check if the origin is allowed
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      }
-      return allowedOrigin === origin;
-    });
-    
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'x-user-id',
-    'x-request-id',
-    'Accept',
-    'Origin',
-    'X-Requested-With'
-  ],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  credentials: true,
-  maxAge: 86400 // Cache preflight results for 24 hours
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://winery-sales-simulator.vercel.app']
+    : ['http://localhost:3000'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 };
 
 // Apply CORS middleware
@@ -174,7 +139,7 @@ app.use((req, res) => {
 });
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 5000;
 const server = http.createServer(app);
 
 // WebSocket setup

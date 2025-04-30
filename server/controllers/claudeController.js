@@ -70,55 +70,103 @@ exports.testClaude = async (req, res, next) => {
 };
 
 // Send a message to Claude
-exports.sendMessage = async (req, res, next) => {
-  const requestId = req.headers['x-request-id'] || uuidv4();
-  
+exports.sendMessage = async (req, res) => {
   try {
-    // Validate request body
-    const { messages, options } = req.body;
+    const { messages, scenario, customerProfile, assistantProfile, wineryProfile } = req.body;
     
-    if (!messages || !Array.isArray(messages)) {
-      throw new Error('Invalid request: messages array is required');
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: 'Invalid messages format' });
     }
 
-    // Validate each message
-    messages.forEach((msg, index) => {
-      if (!msg.role || !msg.content) {
-        throw new Error(`Invalid message at index ${index}: role and content are required`);
-      }
+    // Create system prompt from scenario
+    const systemPrompt = `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character and situation:
+
+Title: ${scenario?.title || 'Wine Tasting Room Visit'}
+Description: ${scenario?.description || 'A customer visiting the tasting room'}
+
+Customer Profile:
+- Names: ${scenario?.customerProfile?.names?.join(' and ') || 'a customer'}
+- Home Location: ${scenario?.customerProfile?.homeLocation || 'a location'}
+- Occupation: ${scenario?.customerProfile?.occupation || 'visiting'}
+- Visit Reason: ${scenario?.customerProfile?.visitReason || 'interested in learning about wines'}
+
+Personality & Knowledge:
+- Knowledge Level: ${scenario?.clientPersonality?.knowledgeLevel || 'Beginner'}
+- Budget Level: ${scenario?.clientPersonality?.budget || 'Moderate'}
+- Personality Traits: ${scenario?.clientPersonality?.traits?.join(', ') || 'curious'}
+
+Wine Preferences:
+- Favorite Wines: ${scenario?.clientPersonality?.preferences?.favoriteWines?.join(', ') || 'various wines'}
+- Dislikes: ${scenario?.clientPersonality?.preferences?.dislikes?.join(', ') || 'none specified'}
+
+Behavioral Instructions:
+${scenario?.behavioralInstructions?.generalBehavior?.map(behavior => `- ${behavior}`).join('\n') || '- Be natural and conversational'}
+
+Tasting Behavior:
+${scenario?.behavioralInstructions?.tastingBehavior?.map(behavior => `- ${behavior}`).join('\n') || '- Express genuine interest'}
+
+Purchase Intentions:
+${scenario?.behavioralInstructions?.purchaseIntentions?.map(intention => `- ${intention}`).join('\n') || '- Be open to suggestions'}
+
+Winery Context:
+- Name: ${scenario?.wineryInfo?.name || 'a winery'}
+- Location: ${scenario?.wineryInfo?.location || 'a location'}
+
+IMPORTANT: You are ALWAYS the customer in this conversation. The user is ALWAYS the wine tasting room staff member. Never switch roles. Your responses should be natural and conversational while staying true to your character's background, preferences, and visit history.`;
+
+    // Add system prompt as first message
+    const messagesWithSystem = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ];
+
+    console.log(`[${req.id}] Sending message to Claude API:`, {
+      messageCount: messagesWithSystem.length,
+      options: { scenario, customerProfile, assistantProfile, wineryProfile }
     });
 
-    // Log request details
-    console.log(`[${requestId}] Sending message to Claude API:`, {
-      messageCount: messages.length,
-      options
-    });
-
-    // Send message using the Claude API utility
-    const response = await claudeApi.sendMessage(messages, options);
-
-    // Log successful response
-    console.log(`[${requestId}] Claude API response received:`, {
-      responseId: response.id,
+    const response = await claudeApi.sendMessage(messagesWithSystem);
+    
+    console.log(`[${req.id}] Claude API response received:`, {
+      responseId: response.messageId,
       model: response.model,
       usage: response.usage
     });
 
-    res.json({
-      success: true,
-      response,
-      requestId
-    });
-  } catch (error) {
-    // Log error details
-    console.error(`[${requestId}] Error sending message to Claude API:`, {
-      error: error.message,
-      stack: error.stack,
-      claudeError: error.claudeError
-    });
+    // Generate audio for the response if we have a voiceId
+    if (scenario?.voiceId) {
+      try {
+        const audioResponse = await axios.post(
+          `${process.env.SERVER_URL || 'http://localhost:5000'}/api/elevenlabs/text-to-speech`,
+          {
+            text: response.response,
+            voiceId: scenario.voiceId
+          }
+        );
 
-    // Pass the error to the error handler middleware
-    next(error);
+        if (audioResponse.data.success && audioResponse.data.audioUrl) {
+          response.audioUrl = audioResponse.data.audioUrl;
+          console.log(`[${req.id}] Successfully generated audio for response`);
+        }
+      } catch (error) {
+        console.error(`[${req.id}] Error generating audio:`, error);
+        // Don't fail the request if audio generation fails
+      }
+    }
+
+    return res.json(response);
+  } catch (error) {
+    console.error(`[${req.id}] Error sending message to Claude:`, {
+      error: {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      }
+    });
+    return res.status(500).json({ 
+      error: 'Failed to send message to Claude',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 

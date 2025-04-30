@@ -93,12 +93,16 @@ export function SimulatorProvider({ children }) {
     }
   }, [lastLoadedScenarioId, error, currentScenario, retryCount]);
 
-  const addInteraction = async (message, role) => {
+  const addInteraction = async (interaction) => {
     if (!currentScenario) {
       console.error('No scenario loaded');
       setError('No scenario loaded');
       return;
     }
+
+    // Handle both old and new parameter structures
+    const message = typeof interaction === 'string' ? interaction : interaction.message;
+    const role = typeof interaction === 'string' ? 'user' : interaction.role;
 
     if (!message || !role) {
       console.error('Missing required fields:', { message: !!message, role: !!role });
@@ -110,13 +114,13 @@ export function SimulatorProvider({ children }) {
       message,
       role,
       timestamp: new Date().toISOString(),
-      scenarioId: lastLoadedScenarioId,
+      scenarioId: currentScenario.id,
       userId: currentUser?.uid
     };
 
     try {
       console.log('Adding new interaction:', { 
-        scenarioId: lastLoadedScenarioId, 
+        scenarioId: currentScenario.id, 
         role, 
         messageLength: message.length,
         currentScenario: currentScenario 

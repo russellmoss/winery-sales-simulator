@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 
 // Debug middleware
 router.use((req, res, next) => {
@@ -29,12 +30,51 @@ router.post('/text-to-speech', async (req, res, next) => {
       });
     }
 
-    // For now, just return a mock response
+    if (!process.env.ELEVENLABS_API_KEY) {
+      console.error('[ElevenLabsRoutes] ELEVENLABS_API_KEY is not set');
+      return res.status(500).json({
+        error: 'Server Error',
+        message: 'ElevenLabs API key is not configured'
+      });
+    }
+
+    console.log('[ElevenLabsRoutes] Making request to ElevenLabs API:', {
+      voiceId,
+      textLength: text.length
+    });
+
+    const response = await axios.post(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+      {
+        text,
+        model_id: "eleven_monolingual_v1",
+        voice_settings: {
+          stability: 0.5,
+          similarity_boost: 0.5
+        }
+      },
+      {
+        headers: {
+          'Accept': 'audio/mpeg',
+          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+          'Content-Type': 'application/json'
+        },
+        responseType: 'arraybuffer'
+      }
+    );
+
+    // Convert the audio buffer to base64
+    const audioBase64 = Buffer.from(response.data).toString('base64');
+    const audioUrl = `data:audio/mpeg;base64,${audioBase64}`;
+
+    console.log('[ElevenLabsRoutes] Successfully generated audio');
+    
     res.json({
       success: true,
-      message: 'Text to speech conversion would happen here'
+      audioUrl
     });
   } catch (error) {
+    console.error('[ElevenLabsRoutes] Error generating audio:', error.message);
     next(error);
   }
 });

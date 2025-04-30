@@ -2,20 +2,61 @@
  * API configuration for the winery sales simulator
  */
 
-// Get the base URL from environment variable or use the current origin
-const API_BASE_URL = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
+const API_CONFIG = {
+  // Base URL for API requests
+  BASE_URL: process.env.NODE_ENV === 'production'
+    ? 'https://winery-sales-simulator.vercel.app/api'
+    : 'http://localhost:5000/api',
 
-// Function to get API endpoints
-export const getEndpoint = (endpoint) => {
-  const ENDPOINTS = {
-    message: `${API_BASE_URL}/claude/message`,
-    'narrative-to-scenario': `${API_BASE_URL}/claude/narrative-to-scenario`,
-    'cleanup-transcription': `${API_BASE_URL}/claude/cleanup-transcription`
-  };
-  return ENDPOINTS[endpoint] || `${API_BASE_URL}/${endpoint}`;
+  // Claude API endpoints
+  CLAUDE: {
+    SEND_MESSAGE: '/claude/message',
+    HEALTH_CHECK: '/claude/health',
+    TEST: '/claude/test'
+  },
+
+  // ElevenLabs API endpoints
+  ELEVENLABS: {
+    TEXT_TO_SPEECH: '/elevenlabs/text-to-speech',
+    HEALTH_CHECK: '/elevenlabs/health'
+  },
+
+  // Headers for API requests
+  HEADERS: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+
+  // Timeout for API requests (in milliseconds)
+  TIMEOUT: 30000,
+
+  // Retry configuration
+  RETRY: {
+    MAX_ATTEMPTS: 3,
+    DELAY: 1000
+  }
 };
 
-export { API_BASE_URL };
+console.log('[API] Configuration:', {
+  baseUrl: API_CONFIG.BASE_URL,
+  environment: process.env.NODE_ENV,
+  customUrl: process.env.REACT_APP_API_URL,
+});
+
+const getEndpoint = (endpoint) => {
+  const endpoints = {
+    message: `${API_CONFIG.BASE_URL}/claude/message`,
+    analyze: `${API_CONFIG.BASE_URL}/claude/analyze`,
+    'narrative-to-scenario': `${API_CONFIG.BASE_URL}/claude/narrative-to-scenario`,
+    'cleanup-transcription': `${API_CONFIG.BASE_URL}/claude/cleanup-transcription`,
+    'transcribe-audio': `${API_CONFIG.BASE_URL}/claude/transcribe-audio`,
+    'evaluate': `${API_CONFIG.BASE_URL}/claude/evaluate`
+  };
+
+  return endpoints[endpoint] || `${API_CONFIG.BASE_URL}/${endpoint}`;
+};
+
+export { API_CONFIG, getEndpoint };
 
 // API endpoints
 export const ENDPOINTS = {
@@ -27,7 +68,4 @@ export const ENDPOINTS = {
   CLAUDE_TRANSCRIBE_AUDIO: getEndpoint('transcribe-audio')
 };
 
-export default {
-  getEndpoint,
-  ENDPOINTS
-}; 
+export default API_CONFIG; 
