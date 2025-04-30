@@ -33,6 +33,7 @@ const corsOptions = {
     const allowedOrigins = [
       process.env.FRONTEND_URL,
       'http://localhost:3000',
+      /\.vercel\.app$/,
       /\.onrender\.com$/
     ];
     

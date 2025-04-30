@@ -3,16 +3,16 @@
  */
 
 // Get the base URL from environment variable or use the current origin
-const API_BASE_URL = process.env.REACT_APP_API_URL || window.location.origin;
+const API_BASE_URL = process.env.REACT_APP_API_URL || `${window.location.origin}/api`;
 
 // Function to get API endpoints
 export const getEndpoint = (endpoint) => {
   const ENDPOINTS = {
-    message: `${API_BASE_URL}/api/claude/message`,
-    'narrative-to-scenario': `${API_BASE_URL}/api/claude/narrative-to-scenario`,
-    'cleanup-transcription': `${API_BASE_URL}/api/claude/cleanup-transcription`
+    message: `${API_BASE_URL}/claude/message`,
+    'narrative-to-scenario': `${API_BASE_URL}/claude/narrative-to-scenario`,
+    'cleanup-transcription': `${API_BASE_URL}/claude/cleanup-transcription`
   };
-  return ENDPOINTS[endpoint] || `${API_BASE_URL}/api/${endpoint}`;
+  return ENDPOINTS[endpoint] || `${API_BASE_URL}/${endpoint}`;
 };
 
 export { API_BASE_URL };
