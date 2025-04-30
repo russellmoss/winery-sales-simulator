@@ -1,10 +1,9 @@
-import { v4 as uuidv4 } from 'uuid';
 import { API_CONFIG, getEndpoint } from '../config/api';
 
 // eslint-disable-next-line no-unused-vars
 const createSystemPrompt = (scenario) => {
   console.log('Creating system prompt with scenario:', JSON.stringify(scenario, null, 2));
-  return `You are acting as a wine tasting room customer in a sales simulation scenario. Here are the details of your character and situation:
+  return `You are ALWAYS the customer in this wine tasting room conversation. You are NEVER the staff member. The user is ALWAYS the staff member. Here are the details of your character and situation:
 
 Title: ${scenario.title}
 Description: ${scenario.description}
@@ -254,7 +253,7 @@ export const sendMessageToClaude = async ({
   assistantProfile,
   wineryProfile
 }) => {
-  const userId = `user-${uuidv4()}`;
+  const userId = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
   console.log('[ClaudeService] Starting message send:', {
     userId,
     messageCount: messages?.length || 0,
