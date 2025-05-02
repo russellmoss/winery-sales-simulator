@@ -13,8 +13,7 @@ export const config = {
   ],
 };
 
-export function middleware(request) {
-  // Get the pathname of the request
+export async function middleware(request) {
   const { pathname } = request.nextUrl;
 
   // Handle API routes
@@ -29,4 +28,11 @@ export function middleware(request) {
 
   // For all other routes, serve the React app
   return NextResponse.rewrite(new URL('/index.html', request.url));
-} 
+}
+
+// Build configuration
+export const build = {
+  buildCommand: 'cd client && npm install && npm run build',
+  outputDirectory: 'client/build',
+  installCommand: 'npm install',
+}; 
