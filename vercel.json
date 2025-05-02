@@ -20,15 +20,10 @@
       "dest": "server/server.js"
     },
     {
-      "src": "/(.*)",
-      "dest": "client/build/$1"
+      "handle": "filesystem"
     },
     {
       "src": "/(.*)",
-      "status": 200,
-      "headers": {
-        "Cache-Control": "public, max-age=0, must-revalidate"
-      },
       "dest": "client/build/index.html"
     }
   ],
