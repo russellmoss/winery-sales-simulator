@@ -6,6 +6,8 @@ import PrivateRoute from './components/PrivateRoute';
 import Header from './components/Header';
 import AppContent from './components/AppContent';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import NotFound from './pages/NotFound';
 import './App.css';
 
 // Lazy-loaded components
@@ -19,9 +21,19 @@ const ScenarioManagement = lazy(() => import('./pages/ScenarioManagement'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const AdminSetup = lazy(() => import('./pages/AdminSetup'));
 
+// Add error tracking
+window.addEventListener('error', (event) => {
+  console.error('Global error:', event.error);
+  // You can add error reporting service here (e.g., Sentry)
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+});
+
 function App() {
   return (
-    <Router>
+    <ErrorBoundary>
       <AuthProvider>
         <SimulatorProvider>
           <div className="app">
@@ -71,6 +83,7 @@ function App() {
                         <AdminSetup />
                       </PrivateRoute>
                     } />
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </AppContent>
               </Suspense>
@@ -78,7 +91,7 @@ function App() {
           </div>
         </SimulatorProvider>
       </AuthProvider>
-    </Router>
+    </ErrorBoundary>
   );
 }
 

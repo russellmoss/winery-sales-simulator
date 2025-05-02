@@ -46,6 +46,15 @@ app.use(rateLimit({ // Rate limiting
   max: 100 // limit each IP to 100 requests per windowMs
 }));
 
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  console.log('Headers:', req.headers);
+  console.log('Query params:', req.query);
+  console.log('Body:', req.body);
+  next();
+});
+
 // Debug middleware to log all requests
 app.use((req, res, next) => {
   console.log('\n=== Request Debug ===');
@@ -167,4 +176,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Export the express app for Vercel
-module.exports = app; 
+module.exports = app;
