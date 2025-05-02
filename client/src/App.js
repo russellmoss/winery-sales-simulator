@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { SimulatorProvider } from './contexts/SimulatorContext';
 import PrivateRoute from './components/PrivateRoute';
@@ -78,7 +78,7 @@ function App() {
                         <UserManagement />
                       </PrivateRoute>
                     } />
-                    <Route path="/admin-setup" element={
+                    <Route path="/admin/setup" element={
                       <PrivateRoute>
                         <AdminSetup />
                       </PrivateRoute>
