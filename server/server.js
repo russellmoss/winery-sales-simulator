@@ -154,16 +154,20 @@ const server = http.createServer(app);
 // WebSocket setup
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
-// Serve static files from the React app
-app.use(express.static(path.join(__dirname, '../client/build')));
-
 // API routes
 app.use('/api', apiRoutes);
 
-// All other routes should serve the React app
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-});
+// For Vercel deployment
+if (process.env.NODE_ENV === 'production') {
+  // Serve static files from the React app
+  app.use(express.static(path.join(__dirname, '../client/build')));
+  
+  // Handle React routing, return all requests to React app
+  app.get('*', (req, res) => {
+    console.log('Serving index.html for path:', req.path);
+    res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
+  });
+}
 
 // Only start the server if not running on Vercel
 if (process.env.NODE_ENV !== 'production') {
