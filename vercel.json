@@ -14,6 +14,12 @@
       "use": "@vercel/node"
     }
   ],
+  "functions": {
+    "api/route.js": {
+      "memory": 1024,
+      "maxDuration": 10
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
