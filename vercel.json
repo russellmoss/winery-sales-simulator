@@ -62,6 +62,8 @@
       ]
     }
   ],
+  "cleanUrls": true,
+  "trailingSlash": false,
   "env": {
     "NODE_ENV": "production",
     "CLAUDE_API_KEY": "CLAUDE_API_KEY",

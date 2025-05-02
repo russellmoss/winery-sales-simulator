@@ -2,7 +2,7 @@
   "name": "winery-sales-simulator",
   "version": "1.0.0",
   "private": true,
-  "homepage": "/",
+  "homepage": ".",
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
@@ -30,7 +30,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "DISABLE_ESLINT_PLUGIN=true PUBLIC_URL=/ react-scripts build",
+    "build": "DISABLE_ESLINT_PLUGIN=true react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "dev": "netlify dev",
