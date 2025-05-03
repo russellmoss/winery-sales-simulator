@@ -1,259 +1,177 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { winerySalesSimulatorScenarios } from '../data/winerySalesSimulatorScenarios';
-import { firestoreService, authService } from '../firebase';
+import React, { createContext, useContext, useState, useCallback } from 'react';
+import { db, auth } from '../firebase/firebase';
+import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { getScenarioById } from '../firebase/firestoreService';
 
 const SimulatorContext = createContext();
 
-export const useSimulator = () => {
-  const context = useContext(SimulatorContext);
-  if (!context) {
-    throw new Error('useSimulator must be used within a SimulatorProvider');
-  }
-  return context;
-};
+export function useSimulator() {
+  return useContext(SimulatorContext);
+}
 
-export const SimulatorProvider = ({ children }) => {
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [messages, setMessages] = useState([]);
+export function SimulatorProvider({ children }) {
   const [currentScenario, setCurrentScenario] = useState(null);
-  const [currentInteraction, setCurrentInteraction] = useState(null);
-  const [scenarios, setScenarios] = useState(winerySalesSimulatorScenarios);
-  const [metrics, setMetrics] = useState({
-    totalInteractions: 0,
-    successfulSales: 0,
-    averageResponseTime: 0,
-    customerSatisfaction: 0,
-  });
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [interactions, setInteractions] = useState([]);
+  const [evaluation, setEvaluation] = useState(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [lastLoadedScenarioId, setLastLoadedScenarioId] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [retryCount, setRetryCount] = useState(0);
+  const MAX_RETRIES = 3;
 
-  // Listen for authentication state changes
-  useEffect(() => {
-    const unsubscribe = authService.onAuthStateChange((user) => {
-      setUser(user);
-      setLoading(false);
+  // Listen for auth state changes
+  React.useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user);
     });
-
     return () => unsubscribe();
   }, []);
 
-  // Load scenarios from Firestore if available
-  useEffect(() => {
-    const loadScenarios = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const firestoreScenarios = await firestoreService.getAllScenarios();
-        if (firestoreScenarios && firestoreScenarios.length > 0) {
-          setScenarios(firestoreScenarios);
-        }
-      } catch (error) {
-        console.error('Error loading scenarios from Firestore:', error);
-        setError('Failed to load scenarios from Firestore');
-        // Fall back to local scenarios
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (user) {
-      loadScenarios();
+  const loadScenario = useCallback(async (scenarioId) => {
+    if (!scenarioId) {
+      console.log('No scenarioId provided, skipping scenario loading');
+      setError('Scenario ID is required');
+      return;
     }
-  }, [user]);
 
-  const startNewSimulation = useCallback(async (scenarioId) => {
+    // Prevent reloading the same scenario if we've already tried too many times
+    if (scenarioId === lastLoadedScenarioId && retryCount >= MAX_RETRIES) {
+      console.log('Max retries reached for scenario:', scenarioId);
+      setError('Failed to load scenario after multiple attempts');
+      setLoading(false);
+      return;
+    }
+
+    // Prevent reloading the same scenario if we already have it
+    if (scenarioId === lastLoadedScenarioId && currentScenario) {
+      console.log('Scenario already loaded, skipping reload');
+      return;
+    }
+
+    // If we previously failed to load this scenario, don't try again
+    if (scenarioId === lastLoadedScenarioId && error === 'Scenario not found') {
+      console.log('Previous attempt failed to find scenario, skipping reload');
+      setLoading(false);
+      return;
+    }
+    
     try {
+      console.log('Loading scenario with ID:', scenarioId);
       setLoading(true);
       setError(null);
       
-      const scenario = scenarios.find(s => s.id === scenarioId);
-      if (!scenario) {
-        throw new Error('Invalid scenario ID');
-      }
-
-      setIsSimulating(true);
+      const scenario = await getScenarioById(scenarioId);
+      console.log('Scenario loaded successfully:', {
+        id: scenario.id,
+        title: scenario.title
+      });
+      
       setCurrentScenario(scenario);
-      setMessages([]);
-      setMetrics({
-        totalInteractions: 0,
-        successfulSales: 0,
-        averageResponseTime: 0,
-        customerSatisfaction: 0,
+      setLastLoadedScenarioId(scenarioId);
+      setInteractions([]);
+      setEvaluation(null);
+      setRetryCount(0); // Reset retry count on success
+    } catch (err) {
+      console.error('Error loading scenario:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        scenarioId
       });
-
-      // Create a new interaction in Firestore
-      if (user) {
-        const interaction = {
-          userId: user.uid,
-          scenarioId: scenario.id,
-          startTime: new Date().toISOString(),
-          messages: [],
-          metrics: {
-            totalInteractions: 0,
-            successfulSales: 0,
-            averageResponseTime: 0,
-            customerSatisfaction: 0,
-          }
-        };
-
-        const interactionId = await firestoreService.saveInteraction(interaction);
-        setCurrentInteraction({
-          id: interactionId,
-          ...interaction
-        });
-      }
-    } catch (error) {
-      console.error('Error starting simulation:', error);
-      setError(error.message || 'Failed to start simulation');
-    } finally {
-      setLoading(false);
-    }
-  }, [scenarios, user]);
-
-  const endSimulation = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
       
-      if (currentInteraction && user) {
-        // Update the interaction in Firestore
-        const updatedInteraction = {
-          ...currentInteraction,
-          endTime: new Date().toISOString(),
-          messages,
-          metrics
-        };
-
-        await firestoreService.saveInteraction(updatedInteraction);
+      // Only update state if this is a new error or we haven't reached max retries
+      if (scenarioId !== lastLoadedScenarioId || retryCount < MAX_RETRIES) {
+        setError(err.message || 'Failed to load scenario');
+        setCurrentScenario(null);
+        setLastLoadedScenarioId(scenarioId);
+        setRetryCount(prev => prev + 1);
       }
-
-      setIsSimulating(false);
-      setCurrentScenario(null);
-      setCurrentInteraction(null);
-    } catch (error) {
-      console.error('Error ending simulation:', error);
-      setError(error.message || 'Failed to end simulation');
     } finally {
       setLoading(false);
     }
-  }, [currentInteraction, messages, metrics, user]);
+  }, [lastLoadedScenarioId, error, currentScenario, retryCount]);
 
-  const resetSimulation = useCallback(() => {
-    setMessages([]);
-    setMetrics({
-      totalInteractions: 0,
-      successfulSales: 0,
-      averageResponseTime: 0,
-      customerSatisfaction: 0,
-    });
-  }, []);
-
-  const addMessage = useCallback(async (message) => {
-    try {
-      const newMessage = {
-        ...message,
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages(prev => [...prev, newMessage]);
-
-      // Update the interaction in Firestore
-      if (currentInteraction && user) {
-        const updatedInteraction = {
-          ...currentInteraction,
-          messages: [...messages, newMessage]
-        };
-
-        await firestoreService.saveInteraction(updatedInteraction);
-      }
-    } catch (error) {
-      console.error('Error adding message:', error);
-      setError(error.message || 'Failed to add message');
+  const addInteraction = async (interaction) => {
+    if (!currentScenario) {
+      console.error('No scenario loaded');
+      setError('No scenario loaded');
+      return;
     }
-  }, [messages, currentInteraction, user]);
 
-  const analyzeInteraction = useCallback(async (interaction) => {
-    try {
-      const updatedMetrics = {
-        ...metrics,
-        totalInteractions: metrics.totalInteractions + 1,
-        successfulSales: interaction.successful ? metrics.successfulSales + 1 : metrics.successfulSales,
-        averageResponseTime: (metrics.averageResponseTime * metrics.totalInteractions + interaction.responseTime) / (metrics.totalInteractions + 1),
-        customerSatisfaction: (metrics.customerSatisfaction * metrics.totalInteractions + interaction.satisfaction) / (metrics.totalInteractions + 1),
-      };
+    // Handle both old and new parameter structures
+    const message = typeof interaction === 'string' ? interaction : interaction.message;
+    const role = typeof interaction === 'string' ? 'user' : interaction.role;
 
-      setMetrics(updatedMetrics);
-
-      // Update the interaction in Firestore
-      if (currentInteraction && user) {
-        const updatedInteraction = {
-          ...currentInteraction,
-          metrics: updatedMetrics
-        };
-
-        await firestoreService.saveInteraction(updatedInteraction);
-      }
-    } catch (error) {
-      console.error('Error analyzing interaction:', error);
-      setError(error.message || 'Failed to analyze interaction');
+    if (!message || !role) {
+      console.error('Missing required fields:', { message: !!message, role: !!role });
+      setError('Message and role are required');
+      return;
     }
-  }, [metrics, currentInteraction, user]);
 
-  const analyzeAssistantResponseImpact = useCallback((response, context) => {
-    // Analyze how the assistant's response aligns with the scenario goals
-    const impact = {
-      relevance: 0,
-      helpfulness: 0,
-      salesPotential: 0,
-      suggestions: []
+    const newInteraction = {
+      message,
+      role,
+      timestamp: new Date().toISOString(),
+      scenarioId: currentScenario.id,
+      userId: currentUser?.uid
     };
 
-    if (currentScenario) {
-      // Check response against scenario goals
-      currentScenario.objectives.forEach(goal => {
-        if (response.toLowerCase().includes(goal.toLowerCase())) {
-          impact.relevance += 1;
-        }
+    try {
+      console.log('Adding new interaction:', { 
+        scenarioId: currentScenario.id, 
+        role, 
+        messageLength: message.length,
+        currentScenario: currentScenario 
       });
+      
+      // Save to Firestore
+      const interactionsRef = collection(db, 'interactions');
+      const docRef = await addDoc(interactionsRef, newInteraction);
+      console.log('Interaction saved successfully with ID:', docRef.id);
+      
+      // Update state
+      setInteractions(prev => [...prev, { ...newInteraction, id: docRef.id }]);
 
-      // Analyze sales potential based on customer profile
-      if (currentScenario.clientPersonality && currentScenario.clientPersonality.traits) {
-        if (currentScenario.clientPersonality.traits.includes('Budget-conscious')) {
-          impact.salesPotential = response.toLowerCase().includes('value') ? 0.8 : 0.5;
-        } else {
-          impact.salesPotential = response.toLowerCase().includes('premium') ? 0.8 : 0.5;
-        }
-      }
+      return docRef.id;
+    } catch (err) {
+      console.error('Error adding interaction:', err);
+      setError(err.message || 'Failed to save interaction');
+      throw err;
+    }
+  };
 
-      // Generate suggestions for improvement
-      if (impact.relevance < currentScenario.objectives.length) {
-        impact.suggestions.push("Consider addressing more of the customer's goals");
-      }
-      if (!response.includes("visit") && currentScenario.clientPersonality && currentScenario.clientPersonality.traits.includes('Wine enthusiast')) {
-        impact.suggestions.push("Suggest a visit to the tasting room");
-      }
+  const saveScenarioEvaluation = async (evaluationData) => {
+    if (!currentScenario?.id) {
+      setError('No scenario loaded');
+      return;
     }
 
-    return impact;
-  }, [currentScenario]);
+    try {
+      const evaluationsRef = collection(db, 'evaluations');
+      const docRef = await addDoc(evaluationsRef, {
+        ...evaluationData,
+        scenarioId: currentScenario.id,
+        userId: currentUser?.uid,
+        timestamp: new Date().toISOString()
+      });
+      setEvaluation({ ...evaluationData, id: docRef.id });
+    } catch (err) {
+      setError(err.message);
+    }
+  };
 
   const value = {
-    isSimulating,
-    messages,
     currentScenario,
-    currentInteraction,
-    metrics,
-    scenarios,
-    user,
+    interactions,
+    evaluation,
     loading,
     error,
-    startNewSimulation,
-    endSimulation,
-    resetSimulation,
-    addMessage,
-    analyzeInteraction,
-    analyzeAssistantResponseImpact,
+    loadScenario,
+    addInteraction,
+    saveScenarioEvaluation,
+    setInteractions
   };
 
   return (
@@ -261,6 +179,4 @@ export const SimulatorProvider = ({ children }) => {
       {children}
     </SimulatorContext.Provider>
   );
-};
-
-export default SimulatorContext; 
+} 
