@@ -154,9 +154,6 @@ const server = http.createServer(app);
 // WebSocket setup
 const wss = new WebSocket.Server({ server, path: '/ws' });
 
-// API routes
-app.use('/api', apiRoutes);
-
 // For Vercel deployment
 if (process.env.NODE_ENV === 'production') {
   // Serve static files from the React app
