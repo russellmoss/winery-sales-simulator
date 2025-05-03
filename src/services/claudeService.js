@@ -475,8 +475,12 @@ export const cleanupTranscription = async (transcription) => {
   }
 };
 
-export default {
+const claudeService = {
   sendMessageToClaude,
+  toggleMute,
+  playQueuedAudio,
   convertNarrativeToScenario,
   cleanupTranscription
-}; 
+};
+
+export default claudeService; 

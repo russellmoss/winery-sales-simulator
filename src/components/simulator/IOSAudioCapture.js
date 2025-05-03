@@ -2,30 +2,31 @@ import React, { useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faMicrophone, faStop, faPlay, faPause } from '@fortawesome/free-solid-svg-icons';
 
-const IOSAudioCapture = ({ onAudioCaptured }) => {
+function IOSAudioCapture({ onAudioCaptured }) {
   const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState(null);
   const [hasRecording, setHasRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [error, setError] = useState(null);
   const [isSupported, setIsSupported] = useState(true);
   const audioRef = useRef(null);
   const mediaRecorderRef = useRef(null);
-  const chunksRef = useRef([]);
+  const audioChunksRef = useRef([]);
 
   const startRecording = async () => {
-    chunksRef.current = [];
+    audioChunksRef.current = [];
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       
       mediaRecorderRef.current.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          chunksRef.current.push(e.data);
+          audioChunksRef.current.push(e.data);
         }
       };
       
       mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(chunksRef.current, { type: 'audio/wav' });
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const audioUrl = URL.createObjectURL(audioBlob);
         
         if (audioRef.current) {
@@ -239,6 +240,6 @@ const IOSAudioCapture = ({ onAudioCaptured }) => {
       `}</style>
     </div>
   );
-};
+}
 
 export default IOSAudioCapture; 

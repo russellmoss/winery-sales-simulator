@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { db, auth } from '../firebase/firebase';
-import { collection, addDoc, getDocs, query, where, doc, getDoc } from 'firebase/firestore';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { collection, addDoc, updateDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { getScenarioById } from '../firebase/firestoreService';
 
@@ -22,7 +22,7 @@ export function SimulatorProvider({ children }) {
   const MAX_RETRIES = 3;
 
   // Listen for auth state changes
-  React.useEffect(() => {
+  useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
     });

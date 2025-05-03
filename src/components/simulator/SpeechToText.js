@@ -181,6 +181,39 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isListening, transcript]);
 
+  useEffect(() => {
+    if (isListening) {
+      startListening();
+    }
+    return () => {
+      if (isListening) {
+        stopListening();
+      }
+    };
+  }, [isListening, startListening, stopListening]);
+
+  useEffect(() => {
+    if (isListening) {
+      stopListening();
+    }
+    return () => {
+      if (isListening) {
+        stopListening();
+      }
+    };
+  }, [isListening, stopListening]);
+
+  useEffect(() => {
+    if (handlePreview) {
+      stopListening();
+    }
+    return () => {
+      if (handlePreview) {
+        stopListening();
+      }
+    };
+  }, [handlePreview, stopListening]);
+
   const startListening = () => {
     setError(null);
     setTranscript('');

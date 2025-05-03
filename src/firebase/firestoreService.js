@@ -11,15 +11,12 @@ import {
   setDoc
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
-import { debugScenarioStructure, validateScenario, debugFirestoreOperations } from '../utils/debugUtils';
 
 const SCENARIOS_COLLECTION = 'scenarios';
 
 // Scenarios
 export const getScenarios = async () => {
   try {
-    await debugFirestoreOperations('read', { collection: SCENARIOS_COLLECTION });
-    
     console.log('Attempting to fetch scenarios from Firestore...');
     console.log('Database instance:', db);
     
@@ -130,11 +127,6 @@ export const deleteScenario = async (scenarioId) => {
 
 export const getScenarioById = async (scenarioId) => {
   try {
-    await debugFirestoreOperations('read', { 
-      collection: SCENARIOS_COLLECTION,
-      documentId: scenarioId 
-    });
-    
     console.log('Loading scenario with ID:', scenarioId);
     
     const scenarioRef = doc(db, SCENARIOS_COLLECTION, scenarioId);

@@ -1,15 +1,16 @@
 import React, { useState } from 'react';
 import { useSimulator } from '../../contexts/SimulatorContext';
 
-const InteractionTest = () => {
-  const [message, setMessage] = useState('');
-  const [testError, setTestError] = useState(null);
-  const [testResult, setTestResult] = useState(null);
-  const { addInteraction, interactions, error } = useSimulator();
+function InteractionTest() {
+  const [isTestMode, setIsTestMode] = useState(false);
+  const [testResults, setTestResults] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const { addInteraction, interactions } = useSimulator();
 
   const runTests = async () => {
-    setTestError(null);
-    setTestResult(null);
+    setError(null);
+    setTestResults([]);
     
     try {
       console.log('Starting interaction tests...');
@@ -18,24 +19,24 @@ const InteractionTest = () => {
       console.log('Test 1: Adding valid interaction');
       const validId = await addInteraction('Hello, this is a test message', 'user');
       console.log('Test 1 result - Interaction ID:', validId);
-      setTestResult(prev => [...(prev || []), 'Test 1: ✅ Valid interaction saved']);
+      setTestResults(prev => [...(prev || []), 'Test 1: ✅ Valid interaction saved']);
 
       // Test 2: Empty message
       console.log('Test 2: Testing empty message');
       try {
         await addInteraction('', 'user');
-        setTestResult(prev => [...(prev || []), 'Test 2: ❌ Empty message was accepted']);
+        setTestResults(prev => [...(prev || []), 'Test 2: ❌ Empty message was accepted']);
       } catch (err) {
-        setTestResult(prev => [...(prev || []), 'Test 2: ✅ Empty message rejected']);
+        setTestResults(prev => [...(prev || []), 'Test 2: ✅ Empty message rejected']);
       }
 
       // Test 3: Missing role
       console.log('Test 3: Testing missing role');
       try {
         await addInteraction('Test message', '');
-        setTestResult(prev => [...(prev || []), 'Test 3: ❌ Missing role was accepted']);
+        setTestResults(prev => [...(prev || []), 'Test 3: ❌ Missing role was accepted']);
       } catch (err) {
-        setTestResult(prev => [...(prev || []), 'Test 3: ✅ Missing role rejected']);
+        setTestResults(prev => [...(prev || []), 'Test 3: ✅ Missing role rejected']);
       }
 
       // Test 4: Check optimistic update
@@ -43,13 +44,13 @@ const InteractionTest = () => {
       const testMessage = 'Testing optimistic update';
       addInteraction(testMessage, 'user');
       const hasOptimisticUpdate = interactions.some(i => i.message === testMessage);
-      setTestResult(prev => [...(prev || []), 
+      setTestResults(prev => [...(prev || []), 
         `Test 4: ${hasOptimisticUpdate ? '✅' : '❌'} Optimistic update`
       ]);
 
     } catch (err) {
       console.error('Test error:', err);
-      setTestError(err.message);
+      setError(err.message);
     }
   };
 

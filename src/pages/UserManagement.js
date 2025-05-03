@@ -123,7 +123,6 @@ function UserManagement() {
       setLoading(true);
       
       // Store admin credentials for re-authentication
-      const adminEmail = currentUser.email;
       const adminPassword = prompt('Please enter your password to confirm this action:');
       
       if (!adminPassword) {

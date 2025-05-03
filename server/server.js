@@ -27,7 +27,7 @@ const app = express();
 // CORS configuration
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://winery-sales-simulator.vercel.app']
+    ? ['https://winery-sales-simulator.vercel.app', 'https://winery-sales-simulator-git-main-russellmorgan.vercel.app']
     : ['http://localhost:3000'],
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -133,6 +133,20 @@ app.get('/', (req, res) => {
       cleanup: '/api/claude/cleanup-transcription'
     }
   });
+});
+
+// Enhanced error logging middleware
+app.use((err, req, res, next) => {
+  console.error('Error details:', {
+    message: err.message,
+    stack: err.stack,
+    path: req.path,
+    method: req.method,
+    headers: req.headers,
+    body: req.body,
+    query: req.query
+  });
+  next(err);
 });
 
 // Error handling middleware

@@ -36,7 +36,6 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CodeIcon from '@mui/icons-material/Code';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
-import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import {
   getScenarios,
@@ -120,7 +119,6 @@ const ScenarioManagement = () => {
   const [newGeneralBehavior, setNewGeneralBehavior] = useState('');
   const [newTastingBehavior, setNewTastingBehavior] = useState('');
   const [newPurchaseIntention, setNewPurchaseIntention] = useState('');
-  const [jsonFile, setJsonFile] = useState(null);
   const [jsonFileName, setJsonFileName] = useState('');
   const [narrativeText, setNarrativeText] = useState('');
   const [isProcessingNarrative, setIsProcessingNarrative] = useState(false);
@@ -196,7 +194,6 @@ const ScenarioManagement = () => {
     setOpenDialog(false);
     setEditingScenario(null);
     setFormData({...initialFormState});
-    setJsonFile(null);
     setJsonFileName('');
   };
 
@@ -414,33 +411,6 @@ const ScenarioManagement = () => {
       const maxY = pageHeight - margin; // Maximum Y position before new page
       let yPos = margin;
 
-      // Helper function to check if we need a new page
-      const checkNewPage = (neededHeight) => {
-        if (yPos + neededHeight > maxY) {
-          pdf.addPage();
-          yPos = margin;
-          return true;
-        }
-        return false;
-      };
-
-      // Helper function to add text with wrapping and pagination
-      const addWrappedText = (text, y, fontSize = 12) => {
-        pdf.setFontSize(fontSize);
-        const lines = pdf.splitTextToSize(text, contentWidth);
-        const lineHeight = fontSize * 1.2;
-        const totalHeight = lines.length * lineHeight;
-
-        // Check if we need a new page
-        if (y + totalHeight > maxY) {
-          pdf.addPage();
-          y = margin;
-        }
-
-        pdf.text(lines, margin, y);
-        return y + totalHeight;
-      };
-
       // Helper function to add a section with pagination
       const addSection = (title, content, y) => {
         // Add section title
@@ -620,7 +590,6 @@ const ScenarioManagement = () => {
     reader.onload = (e) => {
       try {
         const jsonData = JSON.parse(e.target.result);
-        setJsonFile(jsonData);
         
         // Validate the JSON structure
         if (!jsonData.title || !jsonData.description) {

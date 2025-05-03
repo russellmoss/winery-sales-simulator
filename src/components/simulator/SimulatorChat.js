@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
 import { 
   sendMessageToClaude, 
@@ -21,26 +21,17 @@ function SimulatorChat() {
     interactions, 
     addInteraction, 
     loading, 
-    error,
-    setInteractions
+    error
   } = useSimulator();
   const [message, setMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
   const [chatError, setChatError] = useState(null);
-  const [shouldStartRecording, setShouldStartRecording] = useState(false);
   const [showTestPanel, setShowTestPanel] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [showSpeechInput, setShowSpeechInput] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [needsManualPlay, setNeedsManualPlay] = useState(false);
   const [permissionsGranted, setPermissionsGranted] = useState(false);
   const messagesEndRef = useRef(null);
   const audioRef = useRef(null);
-  const navigate = useNavigate();
-  const [showEvaluation, setShowEvaluation] = useState(false);
-  const [evaluationLoading, setEvaluationLoading] = useState(false);
-  const [evaluationError, setEvaluationError] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
 
   const scrollToBottom = () => {
@@ -55,14 +46,8 @@ function SimulatorChat() {
   useEffect(() => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
     
     setIsIOS(isIOSDevice);
-    setIsMobile(isMobileDevice);
-    
-    if (isMobileDevice) {
-      setNeedsManualPlay(true);
-    }
   }, []);
 
   const handleSendMessage = async () => {
@@ -303,10 +288,6 @@ function SimulatorChat() {
     setShowSpeechInput(!showSpeechInput);
   };
 
-  const handleAudioEnded = () => {
-    setShouldStartRecording(true);
-  };
-
   const exportConversation = () => {
     // Create markdown content
     let markdown = `# Wine Tasting Room Conversation\n\n`;
@@ -332,11 +313,6 @@ function SimulatorChat() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const handleManualPlayAudio = () => {
-    playQueuedAudio();
-    setNeedsManualPlay(false);
   };
 
   // Add thinking indicator component
@@ -471,7 +447,7 @@ function SimulatorChat() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           placeholder="Type your message..."
-          disabled={isTyping || isLoading}
+          disabled={isLoading}
         />
 
         <div className="input-controls">
@@ -487,7 +463,7 @@ function SimulatorChat() {
           <button
             type="submit"
             onClick={handleSendMessage}
-            disabled={isTyping || !message.trim() || isLoading}
+            disabled={!message.trim() || isLoading}
             className="send-button"
           >
             Send
@@ -510,7 +486,6 @@ function SimulatorChat() {
 
       <audio 
         ref={audioRef}
-        onEnded={() => setShouldStartRecording(true)}
         style={{ display: 'none' }}
       />
 
