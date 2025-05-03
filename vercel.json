@@ -19,22 +19,6 @@
       "destination": "server/server.js"
     },
     {
-      "source": "/static/:path*",
-      "destination": "client/build/static/:path*"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "client/build/favicon.ico"
-    },
-    {
-      "source": "/manifest.json",
-      "destination": "client/build/manifest.json"
-    },
-    {
-      "source": "/logo192.png",
-      "destination": "client/build/logo192.png"
-    },
-    {
       "source": "/(.*)",
       "destination": "client/build/index.html"
     }
@@ -46,24 +30,10 @@
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com;"
-        },
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "X-Frame-Options",
-          "value": "DENY"
-        },
-        {
-          "key": "X-XSS-Protection",
-          "value": "1; mode=block"
         }
       ]
     }
   ],
-  "cleanUrls": true,
-  "trailingSlash": false,
   "env": {
     "NODE_ENV": "production",
     "CLAUDE_API_KEY": "CLAUDE_API_KEY",
