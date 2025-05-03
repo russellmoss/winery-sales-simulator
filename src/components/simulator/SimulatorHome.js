@@ -1,43 +1,27 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSimulator } from '../../contexts/SimulatorContext';
-import { fetchScenarios } from '../../firebase/firestoreService';
-import {
-  Box,
-  Container,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Grid,
-  Chip,
-  Stack,
-  CircularProgress
-} from '@mui/material';
+import { Link } from 'react-router-dom';
+import { getScenarios } from '../../firebase/firestoreService';
+import { useAuth } from '../../contexts/AuthContext';
+import './SimulatorHome.css';
 
-/**
- * SimulatorHome Component
- * 
- * This component serves as the landing page for the winery sales simulator.
- * It displays available scenarios and allows users to start a new simulation.
- */
 const SimulatorHome = () => {
-  const navigate = useNavigate();
-  const { setCurrentScenario } = useSimulator();
   const [scenarios, setScenarios] = useState([]);
-  const [selectedDifficulty, setSelectedDifficulty] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     const loadScenarios = async () => {
       try {
-        console.log('Starting to load scenarios...');
-        const fetchedScenarios = await fetchScenarios();
+        if (!currentUser) {
+          setError('Please log in to view scenarios');
+          setLoading(false);
+          return;
+        }
+
+        console.log('Fetching scenarios...');
+        const fetchedScenarios = await getScenarios();
+        console.log('Fetched scenarios:', fetchedScenarios);
         setScenarios(fetchedScenarios);
         setError(null);
       } catch (err) {
@@ -49,152 +33,67 @@ const SimulatorHome = () => {
     };
 
     loadScenarios();
-  }, []);
-
-  const difficulties = ['all', 'Beginner', 'Intermediate', 'Advanced', 'Expert'];
-
-  const filteredScenarios = selectedDifficulty === 'all'
-    ? scenarios
-    : scenarios.filter(scenario => 
-        scenario.difficulty === selectedDifficulty
-      );
-
-  const handleStartScenario = (scenario) => {
-    setCurrentScenario(scenario);
-    navigate('/simulator/chat');
-  };
-
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty.toLowerCase()) {
-      case 'beginner': return 'success';
-      case 'intermediate': return 'info';
-      case 'advanced': return 'warning';
-      case 'expert': return 'error';
-      default: return 'default';
-    }
-  };
+  }, [currentUser]);
 
   if (loading) {
     return (
-      <Container sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-        <CircularProgress />
-      </Container>
+      <div className="simulator-home">
+        <div className="loading-container">
+          <h2>Loading Scenarios</h2>
+          <p>Please wait while we fetch available scenarios...</p>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Container sx={{ textAlign: 'center', py: 4 }}>
-        <Typography color="error" gutterBottom>{error}</Typography>
-        <Button variant="contained" onClick={() => window.location.reload()}>
-          Retry
-        </Button>
-      </Container>
+      <div className="simulator-home">
+        <div className="error-container">
+          <h2>Error</h2>
+          <p>{error}</p>
+          {!currentUser && (
+            <Link to="/login" className="login-link">
+              Log In
+            </Link>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (scenarios.length === 0) {
+    return (
+      <div className="simulator-home">
+        <div className="no-scenarios">
+          <h2>No Scenarios Available</h2>
+          <p>There are currently no scenarios available. Please check back later.</p>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Winery Sales Simulator
-      </Typography>
-      
-      <Typography variant="body1" color="text.secondary" paragraph>
-        Choose a scenario to practice your wine sales skills. Each scenario presents unique challenges and learning opportunities.
-      </Typography>
-
-      <Box sx={{ mb: 4 }}>
-        <FormControl sx={{ minWidth: 200 }}>
-          <InputLabel>Difficulty Level</InputLabel>
-          <Select
-            value={selectedDifficulty}
-            label="Difficulty Level"
-            onChange={(e) => setSelectedDifficulty(e.target.value)}
-          >
-            {difficulties.map((difficulty) => (
-              <MenuItem key={difficulty} value={difficulty}>
-                {difficulty.charAt(0).toUpperCase() + difficulty.slice(1)}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-      </Box>
-
-      {filteredScenarios.length === 0 ? (
-        <Typography variant="body1" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
-          No scenarios found for the selected difficulty level.
-        </Typography>
-      ) : (
-        <Grid container spacing={3}>
-          {filteredScenarios.map((scenario) => (
-            <Grid item xs={12} md={6} key={scenario.id}>
-              <Card 
-                elevation={3}
-                sx={{
-                  height: '100%',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  transition: 'transform 0.2s',
-                  '&:hover': {
-                    transform: 'translateY(-4px)'
-                  }
-                }}
-              >
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-                    <Typography variant="h6" component="h2">
-                      {scenario.title}
-                    </Typography>
-                    <Chip 
-                      label={scenario.difficulty}
-                      color={getDifficultyColor(scenario.difficulty)}
-                      size="small"
-                    />
-                  </Stack>
-                  
-                  <Typography color="text.secondary" paragraph>
-                    {scenario.description}
-                  </Typography>
-
-                  <Typography variant="subtitle2" gutterBottom>
-                    Context:
-                  </Typography>
-                  <Typography color="text.secondary" paragraph>
-                    {scenario.context}
-                  </Typography>
-
-                  <Typography variant="subtitle2" gutterBottom>
-                    Objectives:
-                  </Typography>
-                  <Box component="ul" sx={{ pl: 2, mt: 0 }}>
-                    {scenario.objectives.map((objective, index) => (
-                      <Typography 
-                        component="li" 
-                        key={index}
-                        color="text.secondary"
-                        sx={{ mb: 0.5 }}
-                      >
-                        {objective}
-                      </Typography>
-                    ))}
-                  </Box>
-
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => handleStartScenario(scenario)}
-                    sx={{ mt: 2 }}
-                    fullWidth
-                  >
-                    Start Scenario
-                  </Button>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-    </Container>
+    <div className="simulator-home">
+      <h1>Available Scenarios</h1>
+      <div className="scenarios-grid">
+        {scenarios.map((scenario) => (
+          <div key={scenario.id} className="scenario-card">
+            <h3>{scenario.title}</h3>
+            <p>{scenario.description}</p>
+            <div className="scenario-details">
+              <span className="difficulty">{scenario.difficulty}</span>
+            </div>
+            <Link
+              to={`/scenario/${scenario.id}/brief`}
+              className="start-button"
+            >
+              Start Scenario
+            </Link>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
 

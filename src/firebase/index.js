@@ -1,12 +1,12 @@
-import { app, db, auth, storage } from './firebase';
-import * as firestoreService from './firestoreService';
-import * as authService from './authService';
-
+export { default as app } from './firebase';
+export { db, auth } from './firebase';
+export * from './authService';
+export * from './firestoreService';
 export {
-  app,
-  db,
-  auth,
-  storage,
-  firestoreService,
-  authService
-}; 
+  loginUserWithRole,
+  registerUserWithRole,
+  getUserProfileWithRole,
+  updateUserProfileWithRole,
+  deleteUserAccountWithRole,
+  createUser
+} from './userService'; 
