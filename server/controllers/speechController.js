@@ -36,17 +36,32 @@ ${inputText}`
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`Claude API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Claude API error:', errorData);
+      return res.status(500).json({ 
+        error: 'Failed to clean up transcription',
+        details: errorData.error?.message || 'Unknown error'
+      });
     }
 
     const data = await response.json();
+    
+    if (!data.content || !data.content[0] || !data.content[0].text) {
+      console.error('Invalid Claude API response format:', data);
+      return res.status(500).json({ 
+        error: 'Invalid response format from Claude API'
+      });
+    }
+
     const cleanedText = data.content[0].text;
     console.log('Cleaned text:', cleanedText.substring(0, 100) + '...');
     
     res.json({ cleanedText });
   } catch (error) {
     console.error('Error cleaning up transcription:', error);
-    res.status(500).json({ error: 'Failed to clean up transcription' });
+    res.status(500).json({ 
+      error: 'Failed to clean up transcription',
+      details: error.message
+    });
   }
 };
 

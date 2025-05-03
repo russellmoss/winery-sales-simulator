@@ -230,12 +230,16 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           body: JSON.stringify({ text: transcript.trim() }),
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to clean up transcription');
+          throw new Error(data.error || 'Failed to clean up transcription');
         }
 
-        const data = await response.json();
+        if (!data.cleanedText) {
+          throw new Error('Invalid response format: missing cleanedText');
+        }
+
         if (onTranscriptComplete) {
           onTranscriptComplete({
             role: 'user',
@@ -246,8 +250,9 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
         setTranscript('');
       } catch (error) {
         console.error('Error cleaning up transcription:', error);
-        setError(error.message || 'Error cleaning up transcription');
-        toast.error(error.message || 'Error cleaning up transcription');
+        const errorMessage = error.message || 'Error cleaning up transcription';
+        setError(errorMessage);
+        toast.error(errorMessage);
       } finally {
         setIsAnalyzing(false);
       }
