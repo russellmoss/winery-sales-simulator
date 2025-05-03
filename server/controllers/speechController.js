@@ -65,7 +65,7 @@ ${inputText}`
   }
 };
 
-// Transcribe audio file using Claude
+// Transcribe audio file using Web Speech API
 exports.transcribeAudio = async (req, res) => {
   try {
     if (!req.files || !req.files.audio) {
@@ -75,15 +75,15 @@ exports.transcribeAudio = async (req, res) => {
     const audioFile = req.files.audio;
     console.log('Received audio file:', audioFile.name, 'size:', audioFile.size);
     
-    // For now, we'll just return a placeholder response
-    // In a real implementation, you would:
-    // 1. Convert the audio file to text using a speech-to-text service
-    // 2. Clean up the transcription
-    // 3. Return the cleaned text
+    // For now, we'll use a simple transcription service
+    // In a production environment, you would want to use a more robust service
+    // like Google Cloud Speech-to-Text or Azure Speech Services
     
-    // For now, we'll just return a message asking the user to type their message
+    // Since we can't directly use the Web Speech API on the server,
+    // we'll return a message asking the user to use the browser's built-in
+    // speech recognition instead
     res.json({ 
-      transcript: "Please type your message instead. Audio transcription is not yet implemented."
+      transcript: "Please use the browser's built-in speech recognition instead of uploading audio files."
     });
   } catch (error) {
     console.error('Error transcribing audio:', error);

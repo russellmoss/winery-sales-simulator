@@ -263,40 +263,14 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
     try {
       setIsAnalyzing(true);
       
-      // Create a FormData object to send the audio file
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-      
-      // Send the audio file to the server for transcription
-      const response = await fetch(getEndpoint('transcribe-audio'), {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to transcribe audio');
-      }
-
-      const data = await response.json();
-      
-      // Clean up the transcription
-      const cleanupResponse = await fetch(getEndpoint('cleanup-transcription'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: data.transcript }),
-      });
-
-      if (!cleanupResponse.ok) {
-        const errorData = await cleanupResponse.json();
-        throw new Error(errorData.error || 'Failed to clean up transcription');
-      }
-
-      const cleanedData = await cleanupResponse.json();
-      if (onTranscriptComplete) {
-        onTranscriptComplete(cleanedData.cleanedText);
+      // Instead of uploading the audio file, we'll use the browser's built-in
+      // speech recognition
+      if (recognitionRef.current) {
+        recognitionRef.current.start();
+        setIsListening(true);
+      } else {
+        setError('Speech recognition is not available. Please use the text input instead.');
+        toast.error('Speech recognition is not available. Please use the text input instead.');
       }
     } catch (error) {
       console.error('Error processing audio:', error);
