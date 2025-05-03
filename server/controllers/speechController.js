@@ -3,13 +3,14 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 // Clean up transcription text using Claude
 exports.cleanupTranscription = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, transcription } = req.body;
+    const inputText = text || transcription;
     
-    if (!text) {
+    if (!inputText) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    console.log('Cleaning up transcription text:', text.substring(0, 100) + '...');
+    console.log('Cleaning up transcription text:', inputText.substring(0, 100) + '...');
     
     // Use Claude to clean up the transcription
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -27,7 +28,7 @@ exports.cleanupTranscription = async (req, res) => {
             role: 'user',
             content: `Clean up and improve the following text. Fix any obvious errors, add proper punctuation, and make it more readable while preserving the original meaning. Return ONLY the cleaned text, with no additional explanation or formatting:
 
-${text}`
+${inputText}`
           }
         ]
       })
