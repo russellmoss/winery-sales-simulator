@@ -9,6 +9,15 @@ A web application for training wine tasting room staff in sales and customer int
 - Real-time feedback and evaluation
 - Progress tracking and statistics
 - User authentication and profile management
+- Voice synthesis using ElevenLabs API
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+- Node.js (LTS version recommended)
+- Git
+- A code editor (VS Code recommended)
+- npm (comes with Node.js)
 
 ## Tech Stack
 
@@ -17,6 +26,7 @@ A web application for training wine tasting room staff in sales and customer int
 - Database: Firebase Firestore
 - Authentication: Firebase Auth
 - AI Integration: Claude API
+- Voice Synthesis: ElevenLabs API
 
 ## Project Structure
 
@@ -37,15 +47,52 @@ winery-sales-simulator/
     └── config/            # Configuration files
 ```
 
-## Setup
+## Setup Instructions
 
-1. Clone the repository:
+1. **Clone the Repository**
 ```bash
 git clone https://github.com/yourusername/winery-sales-simulator.git
 cd winery-sales-simulator
 ```
 
-2. Install dependencies:
+2. **Environment Setup**
+
+Create a `.env` file in the root directory with the following configuration:
+
+```env
+# Server Configuration
+PORT=5000
+
+# Claude API Configuration
+CLAUDE_API_KEY=your_claude_api_key
+
+# ElevenLabs API Configuration
+ELEVENLABS_API_KEY=your_elevenlabs_api_key
+ELEVENLABS_ANN_VOICE_ID=your_ann_voice_id
+ELEVENLABS_GABRIELLA_VOICE_ID=your_gabriella_voice_id
+ELEVENLABS_RUSSELL_VOICE_ID=your_russell_voice_id
+ELEVENLABS_MIKE_VOICE_ID=your_mike_voice_id
+
+# Firebase Configuration
+REACT_APP_FIREBASE_API_KEY=your_firebase_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_firebase_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+REACT_APP_FIREBASE_APP_ID=your_firebase_app_id
+
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_firebase_auth_domain
+FIREBASE_PROJECT_ID=your_firebase_project_id
+FIREBASE_STORAGE_BUCKET=your_firebase_storage_bucket
+FIREBASE_MESSAGING_SENDER_ID=your_firebase_messaging_sender_id
+FIREBASE_APP_ID=your_firebase_app_id
+
+NODE_ENV=production
+```
+
+3. **Install Dependencies**
+
 ```bash
 # Install server dependencies
 cd server
@@ -56,60 +103,87 @@ cd ../client
 npm install
 ```
 
-3. Set up environment variables:
-- Create a `.env` file in the client directory with Firebase and Claude API credentials
-- Create a `.env` file in the server directory with necessary configurations
+4. **Running the Application**
 
-4. Start the development servers:
+You'll need two terminal windows:
+
+Terminal 1 (Server):
 ```bash
-# Start the backend server
 cd server
 npm run dev
+```
 
-# Start the frontend development server
-cd ../client
+Terminal 2 (Client):
+```bash
+cd client
 npm start
 ```
 
-## Environment Variables
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:5000
 
-### Client (.env)
-```
-REACT_APP_FIREBASE_API_KEY=your_api_key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
-REACT_APP_FIREBASE_PROJECT_ID=your_project_id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
-REACT_APP_FIREBASE_APP_ID=your_app_id
-REACT_APP_CLAUDE_API_KEY=your_claude_api_key
-REACT_APP_API_BASE_URL=http://localhost:5000/api
-```
+## API Keys and Services
 
-### Server (.env)
-```
-PORT=5000
-CLAUDE_API_KEY=your_claude_api_key
-```
+You'll need to obtain the following API keys:
 
-## Environment Setup
+1. **Claude API**
+   - Visit [Anthropic's website](https://www.anthropic.com/) to get your API key
+   - Replace `your_claude_api_key` in the .env file
 
-1. Copy the example environment file:
+2. **ElevenLabs API**
+   - Visit [ElevenLabs](https://elevenlabs.io/) to get your API key
+   - Replace `your_elevenlabs_api_key` and voice IDs in the .env file
+
+3. **Firebase**
+   - Create a project in [Firebase Console](https://console.firebase.google.com/)
+   - Get your configuration details from Project Settings
+   - Replace all Firebase-related values in the .env file
+
+## Troubleshooting
+
+If you encounter any issues:
+
+1. **Dependency Problems**
 ```bash
-cp client/.env.example client/.env
+# In both server and client directories
+rm -rf node_modules
+rm package-lock.json
+npm install
 ```
 
-2. Update the `.env` file with your actual credentials:
-- Firebase credentials from your Firebase Console
-- ElevenLabs API key and voice IDs
-- D-ID API key
+2. **FontAwesome Issues**
+If you see errors related to FontAwesome like:
+```
+Module not found: Error: Can't resolve '@fortawesome/fontawesome-svg-core'
+```
+Run these commands in the client directory:
+```bash
+npm install @fortawesome/fontawesome-svg-core
+# Or to ensure all FontAwesome packages are properly installed:
+npm install @fortawesome/fontawesome-svg-core @fortawesome/free-solid-svg-icons @fortawesome/react-fontawesome
+```
 
-3. Never commit the `.env` file to version control!
+3. **Environment Variables**
+- Ensure all required environment variables are set in the .env file
+- Check that the values are correct and properly formatted
+- Make sure there are no spaces around the = sign in the .env file
+
+4. **Port Conflicts**
+- If port 5000 is in use, you can change the PORT in the .env file
+- If port 3000 is in use, React will automatically suggest using a different port
+
+5. **API Connection Issues**
+- Verify your API keys are correct
+- Check your internet connection
+- Ensure the services (Claude, ElevenLabs, Firebase) are operational
 
 ## Security Notes
 
-- Keep your `.env` file secure and never share it
-- Rotate API keys if they are ever exposed
+- Never commit your `.env` file to version control
+- Keep your API keys secure and don't share them
 - Use different API keys for development and production
+- Regularly rotate your API keys
 - Follow the principle of least privilege when setting up service accounts
 
 ## Contributing
