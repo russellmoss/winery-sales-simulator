@@ -1,31 +1,39 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faMicrophone, faStop } from '@fortawesome/free-solid-svg-icons';
-import { toast } from 'react-hot-toast';
-import IOSAudioCapture from './IOSAudioCapture';
-import { checkSpeechToTextCapability, requestMicrophonePermission } from '../../utils/permissionsUtil';
-import LoadingSpinner from '../common/LoadingSpinner';
-import { getEndpoint } from '../../config/api';
+import React, { useState, useEffect, useRef } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faMicrophone, faStop } from "@fortawesome/free-solid-svg-icons";
+import { toast } from "react-hot-toast";
+import IOSAudioCapture from "./IOSAudioCapture";
+import {
+  checkSpeechToTextCapability,
+  requestMicrophonePermission,
+} from "../../utils/permissionsUtil";
+import LoadingSpinner from "../common/LoadingSpinner";
+import { getEndpoint } from "../../config/api";
 
 // Helper function to detect platform and browser
 const getPlatformInfo = () => {
   const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent.toLowerCase());
+  const isMobile =
+    /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+      userAgent.toLowerCase()
+    );
   const isChrome = /chrome/i.test(userAgent) && !/edge|edg/i.test(userAgent);
-  
+
   return {
     isMobile,
     isChrome,
-    isDesktopChrome: isChrome && !isMobile
+    isDesktopChrome: isChrome && !isMobile,
   };
 };
 
 // Helper function to check if we're on localhost
 const isLocalhost = () => {
-  return window.location.hostname === 'localhost' || 
-         window.location.hostname === '127.0.0.1' ||
-         window.location.hostname.includes('.local') ||
-         window.location.hostname.includes('.test');
+  return (
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname.includes(".local") ||
+    window.location.hostname.includes(".test")
+  );
 };
 
 // Helper function to detect iOS
@@ -36,13 +44,13 @@ const isIOS = () => {
 
 const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
   const [isListening, setIsListening] = useState(false);
-  const [transcript, setTranscript] = useState('');
+  const [transcript, setTranscript] = useState("");
   const [error, setError] = useState(null);
   const [isSupported, setIsSupported] = useState(true);
   const [permissionStatus, setPermissionStatus] = useState({
     checked: false,
     granted: false,
-    error: null
+    error: null,
   });
   const recognitionRef = useRef(null);
   const timeoutRef = useRef(null);
@@ -56,6 +64,166 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
     setIsIOSDevice(isIOS());
   }, []);
 
+  const startListening = () => {
+    setError(null);
+    setTranscript("");
+
+    try {
+      // Check if recognition is already started
+      if (recognitionRef.current && isListening) {
+        console.log("Recognition already started");
+        return;
+      }
+
+      recognitionRef.current.start();
+      setIsListening(true);
+    } catch (err) {
+      console.error("Error starting speech recognition:", err);
+      setError("Failed to start speech recognition. Try reloading the page.");
+      setIsListening(false);
+    }
+  };
+
+  const stopListening = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+    try {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        setIsListening(false);
+      }
+
+      // Only call the completion handler if we have a transcript
+      if (transcript.trim()) {
+        handlePreview();
+      }
+    } catch (err) {
+      console.error("Error stopping speech recognition:", err);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (transcript.trim()) {
+      try {
+        setIsAnalyzing(true);
+
+        const response = await fetch(getEndpoint("cleanup-transcription"), {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: transcript.trim() }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(
+            errorData.error || "Failed to clean up transcription"
+          );
+        }
+
+        const data = await response.json();
+        if (onTranscriptComplete) {
+          onTranscriptComplete({
+            role: "user",
+            content: data.cleanedText,
+            message: data.cleanedText,
+          });
+        }
+        setTranscript("");
+      } catch (error) {
+        console.error("Error cleaning up transcription:", error);
+        setError(error.message || "Error cleaning up transcription");
+        toast.error(error.message || "Error cleaning up transcription");
+      } finally {
+        setIsAnalyzing(false);
+      }
+    }
+  };
+
+  const handleIOSAudioCaptured = async (audioBlob) => {
+    try {
+      setIsAnalyzing(true);
+
+      // Create a FormData object to send the audio file
+      const formData = new FormData();
+      formData.append("audio", audioBlob, "recording.wav");
+
+      // Send the audio file to the server for transcription
+      const response = await fetch(getEndpoint("transcribe-audio"), {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to transcribe audio");
+      }
+
+      const data = await response.json();
+
+      // Clean up the transcription
+      const cleanupResponse = await fetch(
+        getEndpoint("cleanup-transcription"),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ text: data.transcript }),
+        }
+      );
+
+      if (!cleanupResponse.ok) {
+        const errorData = await cleanupResponse.json();
+        throw new Error(errorData.error || "Failed to clean up transcription");
+      }
+
+      const cleanedData = await cleanupResponse.json();
+      if (onTranscriptComplete) {
+        onTranscriptComplete(cleanedData.cleanedText);
+      }
+    } catch (error) {
+      console.error("Error processing audio:", error);
+      setError(error.message || "Error processing audio");
+      toast.error(error.message || "Error processing audio");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleRequestPermission = async () => {
+    setError(null);
+    setIsLoading(true);
+
+    try {
+      const permission = await requestMicrophonePermission();
+      setPermissionStatus({
+        checked: true,
+        granted: permission.granted,
+        error: permission.error,
+      });
+
+      setIsSupported(permission.granted);
+      if (permission.error) {
+        setError(permission.error);
+      } else if (permission.granted) {
+        // Auto-start listening if permission is granted
+        startListening();
+      }
+    } catch (err) {
+      console.error("Error requesting permission:", err);
+      setError("Failed to request permission. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // For browsers without support
+  const fallbackInputHandler = (e) => {
+    setTranscript(e.target.value);
+  };
+
   // Check for browser support and permissions on component mount
   useEffect(() => {
     const checkCapability = async () => {
@@ -65,21 +233,21 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
         setPermissionStatus({
           checked: true,
           granted: capability.granted,
-          error: capability.error
+          error: capability.error,
         });
-        
+
         setIsSupported(capability.granted);
         if (capability.error) {
           setError(capability.error);
         }
       } catch (err) {
-        console.error('Error checking capability:', err);
-        setError('Failed to check speech recognition capability.');
+        console.error("Error checking capability:", err);
+        setError("Failed to check speech recognition capability.");
       } finally {
         setIsInitializing(false);
       }
     };
-    
+
     checkCapability();
   }, [isIOSDevice]);
 
@@ -91,26 +259,27 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
 
     // Initialize recognition
     try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const SpeechRecognition =
+        window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRecognition) {
         setIsSupported(false);
-        setError('Speech recognition is not supported in this browser.');
+        setError("Speech recognition is not supported in this browser.");
         return;
       }
-      
+
       recognitionRef.current = new SpeechRecognition();
       recognitionRef.current.continuous = true;
       recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'en-US';
+      recognitionRef.current.lang = "en-US";
 
       // Set up event handlers
       recognitionRef.current.onresult = (event) => {
-        let currentTranscript = '';
+        let currentTranscript = "";
         for (let i = 0; i < event.results.length; i++) {
           currentTranscript += event.results[i][0].transcript;
         }
         setTranscript(currentTranscript);
-        
+
         // Reset timeout to detect speech end
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
         timeoutRef.current = setTimeout(() => {
@@ -121,7 +290,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       };
 
       recognitionRef.current.onerror = (event) => {
-        console.error('Speech recognition error:', event.error);
+        console.error("Speech recognition error:", event.error);
         setError(`Error: ${event.error}`);
         setIsListening(false);
       };
@@ -133,15 +302,15 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           try {
             recognitionRef.current.start();
           } catch (e) {
-            console.error('Error restarting recognition:', e);
+            console.error("Error restarting recognition:", e);
             setIsListening(false);
           }
         }
       };
     } catch (err) {
-      console.error('Error initializing speech recognition:', err);
+      console.error("Error initializing speech recognition:", err);
       setIsSupported(false);
-      setError('Failed to initialize speech recognition.');
+      setError("Failed to initialize speech recognition.");
     }
 
     return () => {
@@ -159,7 +328,13 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
 
   // Handle auto-start prop
   useEffect(() => {
-    if (autoStart && isSupported && !isListening && !isIOSDevice && permissionStatus.granted) {
+    if (
+      autoStart &&
+      isSupported &&
+      !isListening &&
+      !isIOSDevice &&
+      permissionStatus.granted
+    ) {
       startListening();
     }
   }, [autoStart, isSupported, isIOSDevice, permissionStatus]);
@@ -167,7 +342,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
   // Handle keyboard events
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Enter' && isListening) {
+      if (e.key === "Enter" && isListening) {
         e.preventDefault();
         stopListening();
         // Call handlePreview directly to ensure the message is sent
@@ -177,195 +352,9 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isListening, transcript]);
-
-  useEffect(() => {
-    if (isListening) {
-      startListening();
-    }
-    return () => {
-      if (isListening) {
-        stopListening();
-      }
-    };
-  }, [isListening, startListening, stopListening]);
-
-  useEffect(() => {
-    if (isListening) {
-      stopListening();
-    }
-    return () => {
-      if (isListening) {
-        stopListening();
-      }
-    };
-  }, [isListening, stopListening]);
-
-  useEffect(() => {
-    if (handlePreview) {
-      stopListening();
-    }
-    return () => {
-      if (handlePreview) {
-        stopListening();
-      }
-    };
-  }, [handlePreview, stopListening]);
-
-  const startListening = () => {
-    setError(null);
-    setTranscript('');
-    
-    try {
-      // Check if recognition is already started
-      if (recognitionRef.current && isListening) {
-        console.log('Recognition already started');
-        return;
-      }
-      
-      recognitionRef.current.start();
-      setIsListening(true);
-    } catch (err) {
-      console.error('Error starting speech recognition:', err);
-      setError('Failed to start speech recognition. Try reloading the page.');
-      setIsListening(false);
-    }
-  };
-
-  const stopListening = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
-    try {
-      recognitionRef.current.stop();
-      setIsListening(false);
-      
-      // Only call the completion handler if we have a transcript
-      if (transcript.trim()) {
-        handlePreview();
-      }
-    } catch (err) {
-      console.error('Error stopping speech recognition:', err);
-    }
-  };
-
-  const handlePreview = async () => {
-    if (transcript.trim()) {
-      try {
-        setIsAnalyzing(true);
-        
-        const response = await fetch(getEndpoint('cleanup-transcription'), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ text: transcript.trim() }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to clean up transcription');
-        }
-
-        const data = await response.json();
-        if (onTranscriptComplete) {
-          onTranscriptComplete({
-            role: 'user',
-            content: data.cleanedText,
-            message: data.cleanedText
-          });
-        }
-        setTranscript('');
-      } catch (error) {
-        console.error('Error cleaning up transcription:', error);
-        setError(error.message || 'Error cleaning up transcription');
-        toast.error(error.message || 'Error cleaning up transcription');
-      } finally {
-        setIsAnalyzing(false);
-      }
-    }
-  };
-
-  const handleIOSAudioCaptured = async (audioBlob) => {
-    try {
-      setIsAnalyzing(true);
-      
-      // Create a FormData object to send the audio file
-      const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-      
-      // Send the audio file to the server for transcription
-      const response = await fetch(getEndpoint('transcribe-audio'), {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to transcribe audio');
-      }
-
-      const data = await response.json();
-      
-      // Clean up the transcription
-      const cleanupResponse = await fetch(getEndpoint('cleanup-transcription'), {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text: data.transcript }),
-      });
-
-      if (!cleanupResponse.ok) {
-        const errorData = await cleanupResponse.json();
-        throw new Error(errorData.error || 'Failed to clean up transcription');
-      }
-
-      const cleanedData = await cleanupResponse.json();
-      if (onTranscriptComplete) {
-        onTranscriptComplete(cleanedData.cleanedText);
-      }
-    } catch (error) {
-      console.error('Error processing audio:', error);
-      setError(error.message || 'Error processing audio');
-      toast.error(error.message || 'Error processing audio');
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  const handleRequestPermission = async () => {
-    setError(null);
-    setIsLoading(true);
-    
-    try {
-      const permission = await requestMicrophonePermission();
-      setPermissionStatus({
-        checked: true,
-        granted: permission.granted,
-        error: permission.error
-      });
-      
-      setIsSupported(permission.granted);
-      if (permission.error) {
-        setError(permission.error);
-      } else if (permission.granted) {
-        // Auto-start listening if permission is granted
-        startListening();
-      }
-    } catch (err) {
-      console.error('Error requesting permission:', err);
-      setError('Failed to request permission. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // For browsers without support
-  const fallbackInputHandler = (e) => {
-    setTranscript(e.target.value);
-  };
 
   return (
     <div className="speech-to-text-container">
@@ -376,20 +365,20 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       ) : !permissionStatus.checked ? (
         <div className="permission-request">
           <p>Speech to text requires microphone permission.</p>
-          <button 
+          <button
             className="permission-button"
             onClick={handleRequestPermission}
             disabled={isLoading}
           >
-            {isLoading ? 'Requesting...' : 'Allow Microphone Access'}
+            {isLoading ? "Requesting..." : "Allow Microphone Access"}
           </button>
         </div>
       ) : isSupported ? (
         <div className="speech-controls">
           <button
-            className={`mic-button ${isListening ? 'listening' : ''}`}
+            className={`mic-button ${isListening ? "listening" : ""}`}
             onClick={isListening ? stopListening : startListening}
-            aria-label={isListening ? 'Stop listening' : 'Start listening'}
+            aria-label={isListening ? "Stop listening" : "Start listening"}
             disabled={isLoading}
           >
             {isLoading ? (
@@ -398,7 +387,9 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
               <FontAwesomeIcon icon={isListening ? faStop : faMicrophone} />
             )}
           </button>
-          {isListening && <span className="listening-indicator">Listening...</span>}
+          {isListening && (
+            <span className="listening-indicator">Listening...</span>
+          )}
           {isAnalyzing && (
             <div className="processing-container">
               <div className="spinner"></div>
@@ -411,7 +402,8 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
       ) : (
         <div className="fallback-input">
           <p className="support-message">
-            {error || 'Speech recognition is not available. Please type your message instead.'}
+            {error ||
+              "Speech recognition is not available. Please type your message instead."}
           </p>
           <textarea
             placeholder="Type your message here..."
@@ -425,18 +417,18 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
               onClick={() => onTranscriptComplete(transcript)}
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : 'Use Text'}
+              {isLoading ? "Processing..." : "Use Text"}
             </button>
           )}
         </div>
       )}
-      
+
       <style jsx>{`
         .speech-to-text-container {
           margin-top: 10px;
           width: 100%;
         }
-        
+
         .mic-button {
           width: 40px;
           height: 40px;
@@ -449,25 +441,31 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           cursor: pointer;
           transition: all 0.3s ease;
         }
-        
+
         .mic-button.listening {
           background-color: #ff4d4f;
           color: white;
           animation: pulse 1.5s infinite;
         }
-        
+
         @keyframes pulse {
-          0% { transform: scale(1); }
-          50% { transform: scale(1.1); }
-          100% { transform: scale(1); }
+          0% {
+            transform: scale(1);
+          }
+          50% {
+            transform: scale(1.1);
+          }
+          100% {
+            transform: scale(1);
+          }
         }
-        
+
         .listening-indicator {
           margin-left: 10px;
           color: #ff4d4f;
           font-size: 14px;
         }
-        
+
         .transcript-preview {
           margin-top: 10px;
           padding: 8px;
@@ -477,13 +475,13 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           overflow-y: auto;
           font-size: 14px;
         }
-        
+
         .error-message {
           color: #ff4d4f;
           margin-top: 5px;
           font-size: 12px;
         }
-        
+
         .fallback-input textarea {
           width: 100%;
           padding: 8px;
@@ -491,7 +489,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           border-radius: 4px;
           resize: vertical;
         }
-        
+
         .send-transcript-button {
           margin-top: 8px;
           padding: 5px 10px;
@@ -501,32 +499,32 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           border-radius: 4px;
           cursor: pointer;
         }
-        
+
         @media (max-width: 768px) {
           .speech-controls {
             display: flex;
             flex-direction: column;
             align-items: center;
           }
-          
+
           .mic-button {
             width: 50px;
             height: 50px;
             font-size: 20px;
           }
-          
+
           .transcript-preview {
             width: 100%;
           }
         }
-        
+
         .processing-container {
           display: flex;
           align-items: center;
           gap: 8px;
           margin-left: 10px;
         }
-        
+
         .spinner {
           width: 16px;
           height: 16px;
@@ -535,18 +533,18 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           border-top-color: transparent;
           animation: spin 1s linear infinite;
         }
-        
+
         .analyzing-indicator {
           color: #1890ff;
           font-size: 14px;
         }
-        
+
         @keyframes spin {
           to {
             transform: rotate(360deg);
           }
         }
-        
+
         .permission-request {
           display: flex;
           flex-direction: column;
@@ -557,7 +555,7 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           border-radius: 8px;
           text-align: center;
         }
-        
+
         .permission-button {
           padding: 10px 16px;
           background-color: #1890ff;
@@ -567,20 +565,20 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
           cursor: pointer;
           font-weight: 500;
         }
-        
+
         .support-message {
           color: #6b7280;
           margin-bottom: 10px;
           font-size: 14px;
         }
-        
+
         .permission-button:disabled,
         .mic-button:disabled,
         .send-transcript-button:disabled {
           opacity: 0.7;
           cursor: not-allowed;
         }
-        
+
         .loading-spinner-container {
           display: flex;
           flex-direction: column;
@@ -594,4 +592,4 @@ const SpeechToText = ({ onTranscriptComplete, autoStart = false }) => {
   );
 };
 
-export default SpeechToText; 
+export default SpeechToText;

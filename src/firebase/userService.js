@@ -1,7 +1,24 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, updateProfile, signOut, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth';
-import { getFirestore, doc, setDoc, getDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
-import { auth } from './firebase';
+import { getFunctions, httpsCallable } from "firebase/functions";
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signOut,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+} from "firebase/auth";
+import {
+  getFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+  deleteDoc,
+  collection,
+  getDocs,
+} from "firebase/firestore";
+import { auth, db } from "./firebase";
 
 const functions = getFunctions();
 
@@ -14,40 +31,44 @@ const functions = getFunctions();
 export const loginUserWithRole = async (email, password) => {
   try {
     // Sign in with Firebase Auth
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     const user = userCredential.user;
-    
+
     // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+
     // Get the ID token
     const idToken = await user.getIdToken();
-    
+
     // If user document doesn't exist, return basic user info
     if (!userDoc.exists()) {
-      console.log('User document not found in loginUserWithRole');
+      console.log("User document not found in loginUserWithRole");
       return {
         user: {
           uid: user.uid,
           email: user.email,
-          displayName: user.displayName || email.split('@')[0],
-          role: 'user' // Default role
+          displayName: user.displayName || email.split("@")[0],
+          role: "user", // Default role
         },
-        token: idToken
+        token: idToken,
       };
     }
-    
+
     return {
       user: {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName,
-        role: userDoc.data().role || 'user'
+        role: userDoc.data().role || "user",
       },
-      token: idToken
+      token: idToken,
     };
   } catch (error) {
-    console.error('Error logging in user:', error);
+    console.error("Error logging in user:", error);
     throw error;
   }
 };
@@ -62,29 +83,33 @@ export const loginUserWithRole = async (email, password) => {
 export const registerUserWithRole = async (email, password, displayName) => {
   try {
     // Create user with Firebase Auth
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password
+    );
     const user = userCredential.user;
-    
+
     // Update profile with display name
     await updateProfile(user, { displayName });
-    
+
     // Create user document in Firestore
-    await setDoc(doc(db, 'users', user.uid), {
+    await setDoc(doc(db, "users", user.uid), {
       email,
       displayName,
-      role: 'user', // Default role
+      role: "user", // Default role
       createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     });
-    
+
     return {
       uid: user.uid,
       email: user.email,
       displayName: user.displayName,
-      role: 'user'
+      role: "user",
     };
   } catch (error) {
-    console.error('Error registering user:', error);
+    console.error("Error registering user:", error);
     throw error;
   }
 };
@@ -98,32 +123,33 @@ export const getUserProfileWithRole = async (userId = null) => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
-    
+
     const targetUserId = userId || currentUser.uid;
-    
+
     // Check if user is admin or requesting their own profile
-    const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const isAdmin = currentUserDoc.exists() && currentUserDoc.data().role === 'admin';
-    
+    const currentUserDoc = await getDoc(doc(db, "users", currentUser.uid));
+    const isAdmin =
+      currentUserDoc.exists() && currentUserDoc.data().role === "admin";
+
     if (!isAdmin && currentUser.uid !== targetUserId) {
-      throw new Error('Forbidden: You can only view your own profile');
+      throw new Error("Forbidden: You can only view your own profile");
     }
-    
+
     // Get user data from Firestore
-    const userDoc = await getDoc(doc(db, 'users', targetUserId));
-    
+    const userDoc = await getDoc(doc(db, "users", targetUserId));
+
     if (!userDoc.exists()) {
-      throw new Error('User not found');
+      throw new Error("User not found");
     }
-    
+
     return {
       uid: targetUserId,
-      ...userDoc.data()
+      ...userDoc.data(),
     };
   } catch (error) {
-    console.error('Error getting user profile:', error);
+    console.error("Error getting user profile:", error);
     throw error;
   }
 };
@@ -138,57 +164,59 @@ export const updateUserProfileWithRole = async (userData, userId = null) => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
-    
+
     const targetUserId = userId || currentUser.uid;
-    
+
     // Check if user is admin or updating their own profile
-    const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const isAdmin = currentUserDoc.exists() && currentUserDoc.data().role === 'admin';
-    
+    const currentUserDoc = await getDoc(doc(db, "users", currentUser.uid));
+    const isAdmin =
+      currentUserDoc.exists() && currentUserDoc.data().role === "admin";
+
     if (!isAdmin && currentUser.uid !== targetUserId) {
-      throw new Error('Forbidden: You can only update your own profile');
+      throw new Error("Forbidden: You can only update your own profile");
     }
-    
+
     // Update user in Firebase Auth if it's the current user
     if (currentUser.uid === targetUserId) {
       const updateData = {};
       if (userData.displayName) updateData.displayName = userData.displayName;
       if (userData.email) updateData.email = userData.email;
-      
+
       if (Object.keys(updateData).length > 0) {
         await updateProfile(currentUser, updateData);
       }
     }
-    
+
     // Update user in Firestore
     const firestoreUpdate = {
-      updatedAt: new Date().toISOString()
+      updatedAt: new Date().toISOString(),
     };
-    
-    if (userData.displayName) firestoreUpdate.displayName = userData.displayName;
+
+    if (userData.displayName)
+      firestoreUpdate.displayName = userData.displayName;
     if (userData.email) firestoreUpdate.email = userData.email;
-    
+
     // Only admins can update roles
     if (isAdmin && userData.role) {
       // Use Firebase Function to update role (which sets custom claims)
-      const setUserRole = httpsCallable(functions, 'setUserRole');
+      const setUserRole = httpsCallable(functions, "setUserRole");
       await setUserRole({ userId: targetUserId, role: userData.role });
       firestoreUpdate.role = userData.role;
     }
-    
-    await updateDoc(doc(db, 'users', targetUserId), firestoreUpdate);
-    
+
+    await updateDoc(doc(db, "users", targetUserId), firestoreUpdate);
+
     // Get updated user data
-    const updatedUserDoc = await getDoc(doc(db, 'users', targetUserId));
-    
+    const updatedUserDoc = await getDoc(doc(db, "users", targetUserId));
+
     return {
       uid: targetUserId,
-      ...updatedUserDoc.data()
+      ...updatedUserDoc.data(),
     };
   } catch (error) {
-    console.error('Error updating user profile:', error);
+    console.error("Error updating user profile:", error);
     throw error;
   }
 };
@@ -202,34 +230,35 @@ export const deleteUserAccountWithRole = async (userId = null) => {
   try {
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
-    
+
     const targetUserId = userId || currentUser.uid;
-    
+
     // Check if user is admin or deleting their own account
-    const currentUserDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    const isAdmin = currentUserDoc.exists() && currentUserDoc.data().role === 'admin';
-    
+    const currentUserDoc = await getDoc(doc(db, "users", currentUser.uid));
+    const isAdmin =
+      currentUserDoc.exists() && currentUserDoc.data().role === "admin";
+
     if (!isAdmin && currentUser.uid !== targetUserId) {
-      throw new Error('Forbidden: You can only delete your own account');
+      throw new Error("Forbidden: You can only delete your own account");
     }
-    
+
     // Don't allow deleting your own account if you're an admin
     if (isAdmin && currentUser.uid === targetUserId) {
-      throw new Error('Forbidden: Admins cannot delete their own account');
+      throw new Error("Forbidden: Admins cannot delete their own account");
     }
-    
+
     // Use Firebase Function to delete user
-    const deleteUser = httpsCallable(functions, 'deleteUser');
+    const deleteUser = httpsCallable(functions, "deleteUser");
     await deleteUser({ userId: targetUserId });
-    
+
     // If deleting own account, sign out
     if (currentUser.uid === targetUserId) {
       await signOut(auth);
     }
   } catch (error) {
-    console.error('Error deleting user account:', error);
+    console.error("Error deleting user account:", error);
     throw error;
   }
 };
@@ -244,24 +273,24 @@ export const createUser = async (userData) => {
     // Check if current user is admin
     const isAdmin = await isUserAdmin();
     if (!isAdmin) {
-      throw new Error('Only admins can create new users');
+      throw new Error("Only admins can create new users");
     }
 
     const currentUser = auth.currentUser;
     if (!currentUser) {
-      throw new Error('User not authenticated');
+      throw new Error("User not authenticated");
     }
 
     // Ensure admin user has a Firestore document
-    const adminDoc = await getDoc(doc(db, 'users', currentUser.uid));
+    const adminDoc = await getDoc(doc(db, "users", currentUser.uid));
     if (!adminDoc.exists()) {
-      console.log('Admin user document not found, creating one...');
-      await setDoc(doc(db, 'users', currentUser.uid), {
+      console.log("Admin user document not found, creating one...");
+      await setDoc(doc(db, "users", currentUser.uid), {
         email: currentUser.email,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        role: 'admin',
+        displayName: currentUser.displayName || currentUser.email.split("@")[0],
+        role: "admin",
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
     }
 
@@ -274,7 +303,7 @@ export const createUser = async (userData) => {
 
     // Update user profile
     await updateProfile(userCredential.user, {
-      displayName: userData.displayName
+      displayName: userData.displayName,
     });
 
     // Create user document in Firestore
@@ -282,11 +311,11 @@ export const createUser = async (userData) => {
       uid: userCredential.user.uid,
       email: userData.email,
       displayName: userData.displayName,
-      role: userData.role || 'user',
-      createdAt: new Date().toISOString()
+      role: userData.role || "user",
+      createdAt: new Date().toISOString(),
     };
 
-    await setDoc(doc(db, 'users', userCredential.user.uid), userDoc);
+    await setDoc(doc(db, "users", userCredential.user.uid), userDoc);
 
     // Re-authenticate admin user
     const adminCredential = EmailAuthProvider.credential(
@@ -297,7 +326,7 @@ export const createUser = async (userData) => {
 
     return userDoc;
   } catch (error) {
-    console.error('Error creating user:', error);
+    console.error("Error creating user:", error);
     throw error;
   }
 };
@@ -310,11 +339,11 @@ export const createUser = async (userData) => {
  */
 export const setAdminClaim = async (userId) => {
   try {
-    const setAdminClaimFunction = httpsCallable(functions, 'setAdminClaim');
+    const setAdminClaimFunction = httpsCallable(functions, "setAdminClaim");
     const result = await setAdminClaimFunction({ userId });
     return result.data;
   } catch (error) {
-    console.error('Error setting admin claim:', error);
+    console.error("Error setting admin claim:", error);
     throw error;
   }
 };
@@ -337,24 +366,24 @@ export const isUserAdmin = async () => {
     }
 
     // Fallback to checking Firestore role
-    const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-    
+    const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+
     // If user document doesn't exist, create it
     if (!userDoc.exists()) {
-      console.log('User document not found in isUserAdmin, creating one...');
-      await setDoc(doc(db, 'users', currentUser.uid), {
+      console.log("User document not found in isUserAdmin, creating one...");
+      await setDoc(doc(db, "users", currentUser.uid), {
         email: currentUser.email,
-        displayName: currentUser.displayName || currentUser.email.split('@')[0],
-        role: 'user', // Default role
+        displayName: currentUser.displayName || currentUser.email.split("@")[0],
+        role: "user", // Default role
         createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       });
       return false; // New users are not admins by default
     }
-    
-    return userDoc.data().role === 'admin';
+
+    return userDoc.data().role === "admin";
   } catch (error) {
-    console.error('Error checking admin status:', error);
+    console.error("Error checking admin status:", error);
     return false;
   }
 };
@@ -368,24 +397,24 @@ export const getAllUsers = async () => {
     // Check if user is admin
     const isAdmin = await isUserAdmin();
     if (!isAdmin) {
-      throw new Error('Only admins can get all users');
+      throw new Error("Only admins can get all users");
     }
 
     // Get all users from Firestore
-    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const usersSnapshot = await getDocs(collection(db, "users"));
     const users = [];
-    
-    usersSnapshot.forEach(doc => {
+
+    usersSnapshot.forEach((doc) => {
       users.push({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
       });
     });
-    
+
     return users;
   } catch (error) {
-    console.error('Error getting all users:', error);
+    console.error("Error getting all users:", error);
     // Return an empty array instead of throwing an error
     return [];
   }
-}; 
+};
