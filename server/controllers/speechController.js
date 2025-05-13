@@ -41,7 +41,6 @@ ${inputText}`,
       const errorData = await response.json();
       console.error("Claude API error:", errorData);
       return res.status(500).json({
-        key: process.env.CLAUDE_API_KEY,
         error: "Failed to clean up transcription",
         details: errorData.error?.message || "Unknown error",
       });
@@ -61,11 +60,7 @@ ${inputText}`,
 
     res.json({ cleanedText });
   } catch (error) {
-    console.error(
-      "Error cleaning up transcription:",
-      error,
-      process.env.CLAUDE_API_KEY
-    );
+    console.error("Error cleaning up transcription:", error);
     res.status(500).json({
       error: "Failed to clean up transcription",
       details: error.message,
