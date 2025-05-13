@@ -3,13 +3,14 @@ const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch
 // Clean up transcription text using Claude
 exports.cleanupTranscription = async (req, res) => {
   try {
-    const { text } = req.body;
+    const { text, transcription } = req.body;
+    const inputText = text || transcription;
     
-    if (!text) {
+    if (!inputText) {
       return res.status(400).json({ error: 'Text is required' });
     }
 
-    console.log('Cleaning up transcription text:', text.substring(0, 100) + '...');
+    console.log('Cleaning up transcription text:', inputText.substring(0, 100) + '...');
     
     // Use Claude to clean up the transcription
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -27,7 +28,7 @@ exports.cleanupTranscription = async (req, res) => {
             role: 'user',
             content: `Clean up and improve the following text. Fix any obvious errors, add proper punctuation, and make it more readable while preserving the original meaning. Return ONLY the cleaned text, with no additional explanation or formatting:
 
-${text}`
+${inputText}`
           }
         ]
       })
@@ -35,21 +36,36 @@ ${text}`
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(`Claude API error: ${errorData.error?.message || 'Unknown error'}`);
+      console.error('Claude API error:', errorData);
+      return res.status(500).json({ 
+        error: 'Failed to clean up transcription',
+        details: errorData.error?.message || 'Unknown error'
+      });
     }
 
     const data = await response.json();
+    
+    if (!data.content || !data.content[0] || !data.content[0].text) {
+      console.error('Invalid Claude API response format:', data);
+      return res.status(500).json({ 
+        error: 'Invalid response format from Claude API'
+      });
+    }
+
     const cleanedText = data.content[0].text;
     console.log('Cleaned text:', cleanedText.substring(0, 100) + '...');
     
     res.json({ cleanedText });
   } catch (error) {
     console.error('Error cleaning up transcription:', error);
-    res.status(500).json({ error: 'Failed to clean up transcription' });
+    res.status(500).json({ 
+      error: 'Failed to clean up transcription',
+      details: error.message
+    });
   }
 };
 
-// Transcribe audio file using Claude
+// Transcribe audio file using Web Speech API
 exports.transcribeAudio = async (req, res) => {
   try {
     if (!req.files || !req.files.audio) {
@@ -59,15 +75,15 @@ exports.transcribeAudio = async (req, res) => {
     const audioFile = req.files.audio;
     console.log('Received audio file:', audioFile.name, 'size:', audioFile.size);
     
-    // For now, we'll just return a placeholder response
-    // In a real implementation, you would:
-    // 1. Convert the audio file to text using a speech-to-text service
-    // 2. Clean up the transcription
-    // 3. Return the cleaned text
+    // For now, we'll use a simple transcription service
+    // In a production environment, you would want to use a more robust service
+    // like Google Cloud Speech-to-Text or Azure Speech Services
     
-    // For now, we'll just return a message asking the user to type their message
+    // Since we can't directly use the Web Speech API on the server,
+    // we'll return a message asking the user to use the browser's built-in
+    // speech recognition instead
     res.json({ 
-      transcript: "Please type your message instead. Audio transcription is not yet implemented."
+      transcript: "Please use the browser's built-in speech recognition instead of uploading audio files."
     });
   } catch (error) {
     console.error('Error transcribing audio:', error);
