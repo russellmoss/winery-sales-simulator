@@ -37,7 +37,26 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // Apply middleware in correct order
-app.use(helmet()); // Security headers first
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        fontSrc: ["'self'", "https:", "data:"],
+        imgSrc: ["'self'", "data:", "https:"],
+        mediaSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
+        upgradeInsecureRequests: [],
+      },
+    },
+  })
+); // Security headers first
 app.use(morgan("dev")); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(
