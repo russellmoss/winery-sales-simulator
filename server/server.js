@@ -57,6 +57,12 @@ app.use(
     },
   })
 ); // Security headers first
+
+app.use(
+  helmet.hsts({
+    maxAge: 0,
+  })
+);
 app.use(morgan("dev")); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(
