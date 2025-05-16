@@ -52,16 +52,11 @@ app.use(
         baseUri: ["'self'"],
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
-        upgradeInsecureRequests: true, // Enabled Upgrade-Insecure-Requests
+        upgradeInsecureRequests: null,
       },
     },
-    hsts: {
-      maxAge: 31536000, // Recommended: One year in seconds
-      includeSubDomains: true,
-      preload: false,
-    },
   })
-);
+); // Security headers first
 app.use(morgan("dev")); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(
