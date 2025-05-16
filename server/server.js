@@ -40,7 +40,6 @@ app.use(cors(corsOptions));
 app.use(
   helmet({
     contentSecurityPolicy: {
-      useDefaults: true,
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
@@ -53,7 +52,6 @@ app.use(
         baseUri: ["'self'"],
         formAction: ["'self'"],
         frameAncestors: ["'self'"],
-        upgradeInsecureRequests: [],
       },
     },
   })
