@@ -86,8 +86,8 @@ function SimulatorChat() {
   };
 
   const playAudio = (audioUrl) => {
-    if (soundEffect) {
-      soundEffect.src = audioUrl;
+    if (audioRef.current) {
+      audioRef.current.src = audioUrl;
     }
   };
 
@@ -542,9 +542,7 @@ function SimulatorChat() {
 
           <button
             type="submit"
-            onTouchStart={warmUpAudio}
             onClick={() => {
-              warmUpAudio();
               handleSendMessage();
             }}
             disabled={isTyping || !message.trim() || isLoading}
@@ -569,9 +567,11 @@ function SimulatorChat() {
       </div>
 
       <audio
+        id="hidden_audio"
         ref={audioRef}
-        onEnded={() => setShouldStartRecording(true)}
-        style={{ display: "none" }}
+        src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+        autoPlay
+        style={{ visibility: "hidden" }}
       />
 
       <style jsx="true">{`
