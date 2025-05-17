@@ -48,6 +48,7 @@ function SimulatorChat() {
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [evaluationError, setEvaluationError] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
+  let soundEffect = null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -75,24 +76,18 @@ function SimulatorChat() {
   }, []);
 
   const warmUpAudio = () => {
-    const audio = document.getElementById("audioPlayer");
-    if (audio) {
-      audio.src =
-        "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 0.1s silence
-      audio.play().catch((e) => {
-        console.warn("Warm-up failed:", e);
-      });
-    }
+    soundEffect = new Audio();
+    soundEffect.autoplay = true;
+
+    // onClick of first interaction on page before I need the sounds
+    // (This is a tiny MP3 file that is silent and extremely short - retrieved from https://bigsoundbank.com and then modified)
+    soundEffect.src =
+      "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
   };
 
   const playAudio = (audioUrl) => {
-    const audio = document.getElementById("audioPlayer");
-    if (audio) {
-      audio.muted = false; // unmute before playback
-      audio.src = audioUrl;
-      audio.play().catch((e) => {
-        console.error("Audio playback failed:", e);
-      });
+    if (soundEffect) {
+      soundEffect.src = audioUrl;
     }
   };
 
@@ -544,10 +539,10 @@ function SimulatorChat() {
           >
             <i className="fas fa-microphone"></i>
           </button>
-          <audio id="audioPlayer" muted playsInline preload="auto" />
 
           <button
             type="submit"
+            onTouchStart={warmUpAudio}
             onClick={() => {
               warmUpAudio();
               handleSendMessage();
