@@ -74,24 +74,15 @@ function SimulatorChat() {
     }
   }, []);
 
-  let isAudioUnlocked = false;
-
   const warmUpAudio = () => {
-    if (isAudioUnlocked) return;
-
-    const audio = document.createElement("audio");
-    audio.setAttribute("muted", "");
-    audio.setAttribute("autoplay", "");
-    audio.style.display = "none";
-    audio.src = "data:audio/mp3;base64,...";
-
-    audio.onplay = () => {
-      isAudioUnlocked = true;
-      console.log("Audio unlocked");
-    };
-
-    document.body.appendChild(audio);
-    setTimeout(() => document.body.removeChild(audio), 3000);
+    const audio = document.getElementById("audioPlayer");
+    if (audio) {
+      audio.src =
+        "data:audio/mp3;base64,//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"; // 0.1s silence
+      audio.play().catch((e) => {
+        console.warn("Warm-up failed:", e);
+      });
+    }
   };
 
   const handleSendMessage = async () => {
@@ -541,6 +532,7 @@ function SimulatorChat() {
           >
             <i className="fas fa-microphone"></i>
           </button>
+          <audio id="audioPlayer" muted playsInline preload="auto" />
 
           <button
             type="submit"
