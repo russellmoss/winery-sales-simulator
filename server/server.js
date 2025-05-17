@@ -40,12 +40,20 @@ app.use(cors(corsOptions));
 app.use(
   helmet({
     contentSecurityPolicy: {
-      useDefaults: true,
       directives: {
-        mediaSrc: ["'self'", "data:", "https:"],
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+        styleSrc: ["'self'", "'unsafe-inline'", "https:"],
+        fontSrc: ["'self'", "https:", "data:"],
+        imgSrc: ["'self'", "data:", "https:"],
+        mediaSrc: ["'self'", "data:"],
+        connectSrc: ["'self'", "https:", "wss:"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+        frameAncestors: ["'self'"],
       },
     },
-    strictTransportSecurity: false,
     hsts: {
       maxAge: 0,
       includeSubDomains: true,
@@ -53,7 +61,6 @@ app.use(
     },
   })
 ); // Security headers first
-
 app.use(morgan("dev")); // Logging
 app.use(express.json()); // Parse JSON bodies
 app.use(
