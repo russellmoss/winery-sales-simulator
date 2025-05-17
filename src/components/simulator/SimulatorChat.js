@@ -54,7 +54,6 @@ function SimulatorChat() {
   const playAudio = (audioUrl) => {
     if (audioRef.current) {
       audioRef.current.src = audioUrl;
-      // audioRef.current.play();
     }
   };
 
@@ -123,9 +122,9 @@ function SimulatorChat() {
       });
 
       // Play audio narration if available
-      if (claudeResponse.audio) {
+      if (claudeResponse.audioUrl) {
         console.log("Playing audio narration:", claudeResponse.audio);
-        playAudio(claudeResponse.audio);
+        playAudio(claudeResponse.audioUrl);
         // await playQueuedAudio(claudeResponse.audio);
       }
 
@@ -527,7 +526,9 @@ function SimulatorChat() {
         ref={audioRef}
         src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
         autoPlay
-      />
+      >
+        <track kind="captions" label="No captions available" />
+      </audio>
 
       <style jsx="true">{`
         .chat-container {
