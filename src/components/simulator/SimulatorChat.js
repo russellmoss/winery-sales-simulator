@@ -54,6 +54,7 @@ function SimulatorChat() {
   const playAudio = (audioUrl) => {
     if (audioRef.current) {
       audioRef.current.src = audioUrl;
+      audioRef.current.play();
     }
   };
 
