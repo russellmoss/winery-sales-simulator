@@ -85,6 +85,17 @@ function SimulatorChat() {
     }
   };
 
+  const playAudio = (audioUrl) => {
+    const audio = document.getElementById("audioPlayer");
+    if (audio) {
+      audio.muted = false; // unmute before playback
+      audio.src = audioUrl;
+      audio.play().catch((e) => {
+        console.error("Audio playback failed:", e);
+      });
+    }
+  };
+
   const handleSendMessage = async () => {
     if (!message.trim() || isLoading) return;
 
@@ -152,7 +163,8 @@ function SimulatorChat() {
       // Play audio narration if available
       if (claudeResponse.audio) {
         console.log("Playing audio narration:", claudeResponse.audio);
-        await playQueuedAudio(claudeResponse.audio);
+        playAudio(claudeResponse.audio);
+        // await playQueuedAudio(claudeResponse.audio);
       }
 
       console.log("Message sending process completed", {
