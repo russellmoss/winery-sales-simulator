@@ -1,29 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useSimulator } from '../../contexts/SimulatorContext';
-import { 
-  sendMessageToClaude, 
+import React, { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useSimulator } from "../../contexts/SimulatorContext";
+import {
+  sendMessageToClaude,
   toggleMute,
-  playQueuedAudio 
-} from '../../services/claudeService';
-import SpeechToText from './SpeechToText';
-import IOSAudioCapture from './IOSAudioCapture';
-import InteractionTest from './InteractionTest';
-import PermissionsManager from '../common/PermissionsManager';
-import { conversationToMarkdown, generateEvaluationPrompt } from '../../services/exportService';
-import { evaluateConversation, loadRubric } from '../../services/evaluationService';
-import EvaluationDashboard from './EvaluationDashboard';
-import { getEndpoint } from '../../config/api';
+  playQueuedAudio,
+} from "../../services/claudeService";
+import SpeechToText from "./SpeechToText";
+import IOSAudioCapture from "./IOSAudioCapture";
+import InteractionTest from "./InteractionTest";
+import PermissionsManager from "../common/PermissionsManager";
+import {
+  conversationToMarkdown,
+  generateEvaluationPrompt,
+} from "../../services/exportService";
+import {
+  evaluateConversation,
+  loadRubric,
+} from "../../services/evaluationService";
+import EvaluationDashboard from "./EvaluationDashboard";
+import { getEndpoint } from "../../config/api";
 
 function SimulatorChat() {
-  const { 
-    currentScenario, 
-    interactions, 
-    addInteraction, 
-    loading, 
-    error
-  } = useSimulator();
-  const [message, setMessage] = useState('');
+  const { currentScenario, interactions, addInteraction, loading, error } =
+    useSimulator();
+  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chatError, setChatError] = useState(null);
   const [showTestPanel, setShowTestPanel] = useState(false);
@@ -35,7 +36,7 @@ function SimulatorChat() {
   const [isMuted, setIsMuted] = useState(false);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -46,9 +47,15 @@ function SimulatorChat() {
   useEffect(() => {
     const userAgent = navigator.userAgent || navigator.vendor || window.opera;
     const isIOSDevice = /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
-    
+
     setIsIOS(isIOSDevice);
   }, []);
+
+  const playAudio = (audioUrl) => {
+    if (audioRef.current) {
+      audioRef.current.src = audioUrl;
+    }
+  };
 
   const handleSendMessage = async () => {
     if (!message.trim() || isLoading) return;
@@ -58,34 +65,34 @@ function SimulatorChat() {
       setChatError(null);
 
       const currentUserMessage = message.trim();
-      setMessage('');
+      setMessage("");
 
-      console.log('Starting to send message:', {
+      console.log("Starting to send message:", {
         message: currentUserMessage,
         scenarioId: currentScenario.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       // Add user message to Firestore
-      console.log('Adding user message to Firestore...');
-      const userInteraction = await addInteraction({
+      console.log("Adding user message to Firestore...");
+      await addInteraction({
         message: currentUserMessage,
-        role: 'user',
-        timestamp: new Date().toISOString()
+        role: "user",
+        timestamp: new Date().toISOString(),
       });
 
       // Format messages array for Claude
       const messages = [
         {
-          role: 'user',
-          content: currentUserMessage
-        }
+          role: "user",
+          content: currentUserMessage,
+        },
       ];
 
       // Get response from Claude
-      console.log('Getting response from Claude...', {
+      console.log("Getting response from Claude...", {
         scenarioId: currentScenario.id,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       const claudeResponse = await sendMessageToClaude({
@@ -93,40 +100,41 @@ function SimulatorChat() {
         scenario: currentScenario,
         customerProfile: currentScenario.customerProfile,
         assistantProfile: currentScenario.assistantProfile,
-        wineryProfile: currentScenario.wineryInfo
+        wineryProfile: currentScenario.wineryInfo,
       });
 
-      console.log('Received response from Claude:', claudeResponse);
+      console.log("Received response from Claude:", claudeResponse);
 
       if (!claudeResponse || !claudeResponse.response) {
-        throw new Error('Invalid response from Claude');
+        throw new Error("Invalid response from Claude");
       }
 
       // Add Claude's response to Firestore
-      console.log('Saving Claude response to Firestore:', {
+      console.log("Saving Claude response to Firestore:", {
         response: claudeResponse.response,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
 
       await addInteraction({
         message: claudeResponse.response,
-        role: 'assistant',
-        timestamp: new Date().toISOString()
+        role: "assistant",
+        timestamp: new Date().toISOString(),
       });
 
       // Play audio narration if available
       if (claudeResponse.audio) {
-        console.log('Playing audio narration:', claudeResponse.audio);
-        await playQueuedAudio(claudeResponse.audio);
+        console.log("Playing audio narration:", claudeResponse.audio);
+        playAudio(claudeResponse.audio);
+        // await playQueuedAudio(claudeResponse.audio);
       }
 
-      console.log('Message sending process completed', {
+      console.log("Message sending process completed", {
         success: true,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
     } catch (error) {
-      console.error('Error in handleSendMessage:', error);
-      setChatError(error.message || 'Failed to send message');
+      console.error("Error in handleSendMessage:", error);
+      setChatError(error.message || "Failed to send message");
     } finally {
       setIsLoading(false);
     }
@@ -134,14 +142,17 @@ function SimulatorChat() {
 
   // Add a recovery function for retrying failed saves
   const retryFailedInteractions = async (failedInteractions) => {
-    console.log('Attempting to recover failed interactions:', failedInteractions);
-    
+    console.log(
+      "Attempting to recover failed interactions:",
+      failedInteractions
+    );
+
     for (const interaction of failedInteractions) {
       try {
         await addInteraction(interaction.message, interaction.role);
-        console.log('Successfully recovered interaction:', interaction);
+        console.log("Successfully recovered interaction:", interaction);
       } catch (err) {
-        console.error('Failed to recover interaction:', err);
+        console.error("Failed to recover interaction:", err);
       }
     }
   };
@@ -149,9 +160,11 @@ function SimulatorChat() {
   // Add an effect to handle connection status
   useEffect(() => {
     let failedInteractions = [];
-    
+
     const handleOnline = () => {
-      console.log('Connection restored. Attempting to recover failed interactions...');
+      console.log(
+        "Connection restored. Attempting to recover failed interactions..."
+      );
       if (failedInteractions.length > 0) {
         retryFailedInteractions(failedInteractions);
         failedInteractions = [];
@@ -159,42 +172,49 @@ function SimulatorChat() {
     };
 
     const handleOffline = () => {
-      console.log('Connection lost. Interactions will be saved locally until connection is restored.');
-      setChatError('You are currently offline. Messages will be saved when connection is restored.');
+      console.log(
+        "Connection lost. Interactions will be saved locally until connection is restored."
+      );
+      setChatError(
+        "You are currently offline. Messages will be saved when connection is restored."
+      );
     };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
     };
   }, []);
 
   // Add error display component
   const ErrorDisplay = ({ error }) => {
     if (!error) return null;
-    
+
     return (
-      <div className="error-banner" style={{
-        padding: '10px',
-        marginBottom: '10px',
-        backgroundColor: '#fff3cd',
-        color: '#856404',
-        borderRadius: '4px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between'
-      }}>
+      <div
+        className="error-banner"
+        style={{
+          padding: "10px",
+          marginBottom: "10px",
+          backgroundColor: "#fff3cd",
+          color: "#856404",
+          borderRadius: "4px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+        }}
+      >
         <span>⚠️ {error}</span>
-        <button 
+        <button
           onClick={() => setChatError(null)}
           style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '0 5px'
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "0 5px",
           }}
         >
           ✕
@@ -205,12 +225,12 @@ function SimulatorChat() {
 
   const handleToggleMute = () => {
     const newMuteState = toggleMute();
-    console.log('Mute state toggled:', newMuteState);
+    console.log("Mute state toggled:", newMuteState);
     setIsMuted(newMuteState);
   };
 
   const handleEndSimulation = () => {
-    if (window.confirm('Are you sure you want to end this simulation?')) {
+    if (window.confirm("Are you sure you want to end this simulation?")) {
       // Export conversation as markdown
       let markdown = `# Wine Tasting Room Conversation\n\n`;
       markdown += `## Scenario: ${currentScenario.title}\n\n`;
@@ -220,40 +240,45 @@ function SimulatorChat() {
 
       // Add each interaction to the markdown
       interactions.forEach((interaction, index) => {
-        const role = interaction.role === 'user' ? 'Staff Member' : 'Guest';
+        const role = interaction.role === "user" ? "Staff Member" : "Guest";
         markdown += `### ${role} (${index + 1})\n\n`;
         markdown += `${interaction.message}\n\n`;
       });
 
       // Create and download the file
-      const blob = new Blob([markdown], { type: 'text/markdown' });
+      const blob = new Blob([markdown], { type: "text/markdown" });
       const url = URL.createObjectURL(blob);
-      
+
       // Create a temporary link element
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.download = `wine-tasting-conversation-${new Date().toISOString().slice(0, 10)}.md`;
-      
+      link.download = `wine-tasting-conversation-${new Date()
+        .toISOString()
+        .slice(0, 10)}.md`;
+
       // For mobile devices, we need to append the link to the document
       document.body.appendChild(link);
-      
+
       // Trigger the download
       link.click();
-      
+
       // Clean up
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       // Navigate to home page after a short delay to ensure download starts
       setTimeout(() => {
-        window.location.href = '/';
+        window.location.href = "/";
       }, 1000);
     }
   };
 
   const handleTranscriptComplete = (transcript) => {
     // Handle both string and object transcript formats
-    const messageText = typeof transcript === 'string' ? transcript : transcript.content || transcript.message;
+    const messageText =
+      typeof transcript === "string"
+        ? transcript
+        : transcript.content || transcript.message;
     setMessage(messageText);
     setShowSpeechInput(false);
   };
@@ -262,25 +287,25 @@ function SimulatorChat() {
     try {
       // Create a FormData object to send the audio file
       const formData = new FormData();
-      formData.append('audio', audioBlob, 'recording.wav');
-      
+      formData.append("audio", audioBlob, "recording.wav");
+
       // Send the audio file to the server for transcription
-      const response = await fetch(getEndpoint('transcribe-audio'), {
-        method: 'POST',
+      const response = await fetch(getEndpoint("transcribe-audio"), {
+        method: "POST",
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to transcribe audio');
+        throw new Error(errorData.error || "Failed to transcribe audio");
       }
 
       const data = await response.json();
       setMessage(data.transcript);
       setShowSpeechInput(false);
     } catch (error) {
-      console.error('Error transcribing audio:', error);
-      setChatError(error.message || 'Error transcribing audio');
+      console.error("Error transcribing audio:", error);
+      setChatError(error.message || "Error transcribing audio");
     }
   };
 
@@ -298,17 +323,19 @@ function SimulatorChat() {
 
     // Add each interaction to the markdown
     interactions.forEach((interaction, index) => {
-      const role = interaction.role === 'user' ? 'Staff Member' : 'Guest';
+      const role = interaction.role === "user" ? "Staff Member" : "Guest";
       markdown += `### ${role} (${index + 1})\n\n`;
       markdown += `${interaction.message}\n\n`;
     });
 
     // Create and download the file
-    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const blob = new Blob([markdown], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `wine-tasting-conversation-${new Date().toISOString().slice(0, 10)}.md`;
+    a.download = `wine-tasting-conversation-${new Date()
+      .toISOString()
+      .slice(0, 10)}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -317,44 +344,56 @@ function SimulatorChat() {
 
   // Add thinking indicator component
   const ThinkingIndicator = () => (
-    <div className="thinking-indicator" style={{
-      display: 'flex',
-      alignItems: 'center',
-      padding: '10px',
-      margin: '10px 0',
-      backgroundColor: '#f8f9fa',
-      borderRadius: '8px',
-      fontStyle: 'italic',
-      color: '#6c757d'
-    }}>
-      <div className="thinking-dots" style={{
-        marginRight: '8px',
-        display: 'flex',
-        gap: '4px'
-      }}>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: '#6c757d',
-          animation: 'bounce 1.4s infinite ease-in-out'
-        }}></div>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: '#6c757d',
-          animation: 'bounce 1.4s infinite ease-in-out',
-          animationDelay: '0.2s'
-        }}></div>
-        <div style={{
-          width: '8px',
-          height: '8px',
-          borderRadius: '50%',
-          backgroundColor: '#6c757d',
-          animation: 'bounce 1.4s infinite ease-in-out',
-          animationDelay: '0.4s'
-        }}></div>
+    <div
+      className="thinking-indicator"
+      style={{
+        display: "flex",
+        alignItems: "center",
+        padding: "10px",
+        margin: "10px 0",
+        backgroundColor: "#f8f9fa",
+        borderRadius: "8px",
+        fontStyle: "italic",
+        color: "#6c757d",
+      }}
+    >
+      <div
+        className="thinking-dots"
+        style={{
+          marginRight: "8px",
+          display: "flex",
+          gap: "4px",
+        }}
+      >
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            backgroundColor: "#6c757d",
+            animation: "bounce 1.4s infinite ease-in-out",
+          }}
+        ></div>
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            backgroundColor: "#6c757d",
+            animation: "bounce 1.4s infinite ease-in-out",
+            animationDelay: "0.2s",
+          }}
+        ></div>
+        <div
+          style={{
+            width: "8px",
+            height: "8px",
+            borderRadius: "50%",
+            backgroundColor: "#6c757d",
+            animation: "bounce 1.4s infinite ease-in-out",
+            animationDelay: "0.4s",
+          }}
+        ></div>
       </div>
       Thinking...
     </div>
@@ -362,7 +401,7 @@ function SimulatorChat() {
 
   // Add keyframes for the animation
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.textContent = `
       @keyframes bounce {
         0%, 80%, 100% { transform: scale(0); }
@@ -388,9 +427,11 @@ function SimulatorChat() {
   return (
     <div className="chat-container">
       {!permissionsGranted && (
-        <PermissionsManager onPermissionsGranted={() => setPermissionsGranted(true)} />
+        <PermissionsManager
+          onPermissionsGranted={() => setPermissionsGranted(true)}
+        />
       )}
-      
+
       <div className="chat-header">
         <h2>{currentScenario.title}</h2>
         <div className="header-buttons">
@@ -400,18 +441,18 @@ function SimulatorChat() {
           <button onClick={handleEndSimulation} className="btn btn-secondary">
             End Simulation
           </button>
-          {process.env.NODE_ENV === 'development' && (
-            <button 
-              onClick={() => setShowTestPanel(!showTestPanel)} 
+          {process.env.NODE_ENV === "development" && (
+            <button
+              onClick={() => setShowTestPanel(!showTestPanel)}
               className="btn btn-info"
             >
-              {showTestPanel ? 'Hide Test Panel' : 'Show Test Panel'}
+              {showTestPanel ? "Hide Test Panel" : "Show Test Panel"}
             </button>
           )}
         </div>
       </div>
 
-      {process.env.NODE_ENV === 'development' && showTestPanel && (
+      {process.env.NODE_ENV === "development" && showTestPanel && (
         <div className="test-panel">
           <InteractionTest />
         </div>
@@ -419,10 +460,7 @@ function SimulatorChat() {
 
       <div className="chat-messages">
         {interactions.map((interaction, index) => (
-          <div
-            key={index}
-            className={`message message-${interaction.role}`}
-          >
+          <div key={index} className={`message message-${interaction.role}`}>
             {interaction.message}
           </div>
         ))}
@@ -433,12 +471,9 @@ function SimulatorChat() {
       <ErrorDisplay error={chatError} />
 
       <div className="audio-controls">
-        <button 
-          onClick={handleToggleMute}
-          className="mute-button"
-        >
-          <i className={`fas fa-volume-${isMuted ? 'mute' : 'up'}`}></i>
-          {isMuted ? 'Unmute' : 'Mute'}
+        <button onClick={handleToggleMute} className="mute-button">
+          <i className={`fas fa-volume-${isMuted ? "mute" : "up"}`}></i>
+          {isMuted ? "Unmute" : "Mute"}
         </button>
       </div>
 
@@ -454,28 +489,30 @@ function SimulatorChat() {
           <button
             type="button"
             onClick={toggleSpeechInput}
-            className={`speech-toggle-button ${showSpeechInput ? 'active' : ''}`}
+            className={`speech-toggle-button ${
+              showSpeechInput ? "active" : ""
+            }`}
             aria-label="Toggle speech input"
           >
             <i className="fas fa-microphone"></i>
           </button>
-          
+
           <button
             type="submit"
             onClick={handleSendMessage}
             disabled={!message.trim() || isLoading}
             className="send-button"
           >
-            Send
+            Send.
           </button>
         </div>
-        
+
         {showSpeechInput && (
           <div className="speech-input-container">
             {isIOS ? (
               <IOSAudioCapture onAudioCaptured={handleIOSAudioCaptured} />
             ) : (
-              <SpeechToText 
+              <SpeechToText
                 onTranscriptComplete={handleTranscriptComplete}
                 autoStart={true}
               />
@@ -484,9 +521,12 @@ function SimulatorChat() {
         )}
       </div>
 
-      <audio 
+      <audio
+        id="hidden_audio"
         ref={audioRef}
-        style={{ display: 'none' }}
+        src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
+        autoPlay
+        style={{ visibility: "hidden" }}
       />
 
       <style jsx="true">{`
@@ -575,7 +615,7 @@ function SimulatorChat() {
           padding: 15px;
           background: white;
           border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         textarea {
           width: 100%;
@@ -640,7 +680,8 @@ function SimulatorChat() {
           animation-delay: 0.4s;
         }
         @keyframes typing {
-          0%, 100% {
+          0%,
+          100% {
             transform: translateY(0);
           }
           50% {
@@ -720,12 +761,12 @@ function SimulatorChat() {
             padding: 10px;
             height: calc(100vh - 20px);
           }
-          
+
           .chat-header {
             padding: 10px 12px;
             margin-bottom: 10px;
           }
-          
+
           .chat-header h2 {
             font-size: 18px;
             max-width: 200px;
@@ -733,61 +774,61 @@ function SimulatorChat() {
             overflow: hidden;
             text-overflow: ellipsis;
           }
-          
+
           .header-buttons {
             flex-direction: column;
             gap: 8px;
           }
-          
+
           .btn {
             padding: 8px 12px;
             font-size: 13px;
             width: 100%;
           }
-          
+
           .chat-messages {
             padding: 12px;
             margin-bottom: 10px;
           }
-          
+
           .message {
             max-width: 90%;
             padding: 10px 12px;
             font-size: 15px;
           }
-          
+
           .chat-input-container {
             padding: 12px;
           }
-          
+
           textarea {
             min-height: 80px;
             font-size: 16px;
             padding: 10px;
           }
-          
+
           .input-controls {
             flex-direction: column;
           }
-          
+
           .speech-toggle-button {
             width: 48px;
             height: 48px;
             font-size: 20px;
           }
-          
+
           .send-button {
             width: 100%;
             padding: 12px;
             max-width: none;
           }
-          
+
           .audio-controls {
             flex-direction: column;
             gap: 10px;
             align-items: center;
           }
-          
+
           .mute-button,
           .play-audio-button {
             width: 100%;
@@ -800,7 +841,7 @@ function SimulatorChat() {
           .chat-input-container textarea {
             font-size: 16px; /* Prevents auto-zoom on iOS */
           }
-          
+
           .send-button,
           .speech-toggle-button {
             padding-top: 12px;
@@ -812,4 +853,4 @@ function SimulatorChat() {
   );
 }
 
-export default SimulatorChat; 
+export default SimulatorChat;

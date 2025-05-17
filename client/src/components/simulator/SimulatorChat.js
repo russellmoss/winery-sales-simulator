@@ -48,7 +48,6 @@ function SimulatorChat() {
   const [evaluationLoading, setEvaluationLoading] = useState(false);
   const [evaluationError, setEvaluationError] = useState(null);
   const [isMuted, setIsMuted] = useState(false);
-  let soundEffect = null;
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -74,22 +73,6 @@ function SimulatorChat() {
       setNeedsManualPlay(true);
     }
   }, []);
-
-  const warmUpAudio = () => {
-    soundEffect = new Audio();
-    soundEffect.autoplay = true;
-
-    // onClick of first interaction on page before I need the sounds
-    // (This is a tiny MP3 file that is silent and extremely short - retrieved from https://bigsoundbank.com and then modified)
-    soundEffect.src =
-      "data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV";
-  };
-
-  const playAudio = (audioUrl) => {
-    if (audioRef.current) {
-      audioRef.current.src = audioUrl;
-    }
-  };
 
   const handleSendMessage = async () => {
     if (!message.trim() || isLoading) return;
@@ -158,8 +141,7 @@ function SimulatorChat() {
       // Play audio narration if available
       if (claudeResponse.audio) {
         console.log("Playing audio narration:", claudeResponse.audio);
-        playAudio(claudeResponse.audio);
-        // await playQueuedAudio(claudeResponse.audio);
+        await playQueuedAudio(claudeResponse.audio);
       }
 
       console.log("Message sending process completed", {
@@ -542,9 +524,7 @@ function SimulatorChat() {
 
           <button
             type="submit"
-            onClick={() => {
-              handleSendMessage();
-            }}
+            onClick={handleSendMessage}
             disabled={isTyping || !message.trim() || isLoading}
             className="send-button"
           >
@@ -567,11 +547,9 @@ function SimulatorChat() {
       </div>
 
       <audio
-        id="hidden_audio"
         ref={audioRef}
-        src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV"
-        autoPlay
-        style={{ visibility: "hidden" }}
+        onEnded={() => setShouldStartRecording(true)}
+        style={{ display: "none" }}
       />
 
       <style jsx="true">{`
