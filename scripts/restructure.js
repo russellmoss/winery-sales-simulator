@@ -1,6 +1,5 @@
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
 
 // Create necessary directories
 const dirs = [
@@ -15,6 +14,26 @@ dirs.forEach(dir => {
   }
 });
 
+// Helper function to copy directory recursively
+function copyDir(src, dest) {
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(dest, { recursive: true });
+  }
+
+  const entries = fs.readdirSync(src, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const srcPath = path.join(src, entry.name);
+    const destPath = path.join(dest, entry.name);
+
+    if (entry.isDirectory()) {
+      copyDir(srcPath, destPath);
+    } else {
+      fs.copyFileSync(srcPath, destPath);
+    }
+  }
+}
+
 // Move client files to root
 const moveFiles = [
   { from: 'client/public', to: 'public' },
@@ -25,27 +44,33 @@ const moveFiles = [
 
 moveFiles.forEach(({ from, to }) => {
   if (fs.existsSync(from)) {
-    execSync(`cp -r ${from}/* ${to}/`);
+    if (fs.lstatSync(from).isDirectory()) {
+      copyDir(from, to);
+    } else {
+      fs.copyFileSync(from, to);
+    }
   }
 });
 
 // Convert server routes to API routes
-const serverFiles = fs.readdirSync('server/routes');
-serverFiles.forEach(file => {
-  if (file.endsWith('.js')) {
-    const routeName = path.basename(file, '.js');
-    const apiPath = path.join('api', `${routeName}.js`);
-    
-    const content = `
+if (fs.existsSync('server/routes')) {
+  const serverFiles = fs.readdirSync('server/routes');
+  serverFiles.forEach(file => {
+    if (file.endsWith('.js')) {
+      const routeName = path.basename(file, '.js');
+      const apiPath = path.join('api', `${routeName}.js`);
+      
+      const content = `
 import { createHandler } from '@vercel/node';
 import { ${routeName} } from '../server/routes/${routeName}';
 
 export default createHandler(${routeName});
-    `;
-    
-    fs.writeFileSync(apiPath, content);
-  }
-});
+      `;
+      
+      fs.writeFileSync(apiPath, content);
+    }
+  });
+}
 
 console.log('Project restructuring complete!');
 console.log('Next steps:');

@@ -1,111 +1,113 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { useSimulator } from '../../contexts/SimulatorContext';
-import './SimulatorBrief.css';
 
-const SimulatorBrief = () => {
-  const { currentScenario, metrics } = useSimulator();
+function SimulatorBrief() {
+  const { currentScenario, loading, error, loadScenario } = useSimulator();
+  const { scenarioId } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (scenarioId && (!currentScenario || currentScenario.id !== scenarioId)) {
+      loadScenario(scenarioId);
+    }
+  }, [scenarioId, loadScenario, currentScenario]);
+
+  if (loading) {
+    return <div className="loading">Loading scenario...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="error-container">
+        <div className="error-message">{error}</div>
+        <button onClick={() => navigate('/')} className="btn btn-primary">
+          Return Home
+        </button>
+      </div>
+    );
+  }
 
   if (!currentScenario) {
-    return null;
+    return (
+      <div className="error-container">
+        <div className="error-message">Scenario not found</div>
+        <button onClick={() => navigate('/')} className="btn btn-primary">
+          Return Home
+        </button>
+      </div>
+    );
   }
 
   return (
-    <div className="simulator-brief">
+    <div className="brief-container">
       <div className="brief-header">
-        <h2>{currentScenario.title}</h2>
-        <div className="difficulty-badge">
-          {currentScenario.difficulty}
+        <h1 className="brief-title">{currentScenario.title}</h1>
+        <p className="brief-subtitle">
+          Difficulty: {currentScenario.difficulty} | Duration: {currentScenario.estimatedDuration || '30'} minutes
+        </p>
+      </div>
+
+      <div className="brief-section">
+        <h2 className="brief-section-title">Scenario Overview</h2>
+        <p>{currentScenario.description}</p>
+      </div>
+
+      <div className="brief-section">
+        <h2 className="brief-section-title">Client Information</h2>
+        <div className="client-info">
+          <h3>Client Profile</h3>
+          <p>{currentScenario.clientProfile || 'A wine enthusiast visiting the tasting room.'}</p>
+
+          <h3>Client Personality</h3>
+          <ul>
+            {currentScenario.clientPersonality?.traits?.map((trait, index) => (
+              <li key={index}>{trait}</li>
+            )) || <li>No personality traits specified</li>}
+          </ul>
+
+          <h3>Client Objectives</h3>
+          <ul>
+            {currentScenario.objectives?.map((objective, index) => (
+              <li key={index}>{objective}</li>
+            )) || <li>No objectives specified</li>}
+          </ul>
         </div>
       </div>
 
-      <div className="brief-content">
-        <section className="scenario-description">
-          <h3>Scenario Description</h3>
-          <p>{currentScenario.description}</p>
-        </section>
+      <div className="brief-section">
+        <h2 className="brief-section-title">Your Role</h2>
+        <p>{currentScenario.assistantRole || 'Wine tasting room staff member'}</p>
+      </div>
 
-        <section className="client-profile">
-          <h3>Client Profile</h3>
-          <div className="profile-details">
-            <div className="profile-trait">
-              <span className="trait-label">Knowledge Level:</span>
-              <span className="trait-value">{currentScenario.clientPersonality.knowledgeLevel}</span>
-            </div>
-            <div className="profile-trait">
-              <span className="trait-label">Budget:</span>
-              <span className="trait-value">{currentScenario.clientPersonality.budget}</span>
-            </div>
-            <div className="profile-trait">
-              <span className="trait-label">Traits:</span>
-              <div className="trait-tags">
-                {currentScenario.clientPersonality.traits.map((trait, index) => (
-                  <span key={index} className="trait-tag">{trait}</span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="brief-section">
+        <h2 className="brief-section-title">Evaluation Criteria</h2>
+        <ul>
+          {currentScenario.evaluationCriteria?.map((criterion, index) => (
+            <li key={index}>{criterion}</li>
+          )) || <li>No evaluation criteria specified</li>}
+        </ul>
+      </div>
 
-        <section className="objectives">
-          <h3>Objectives</h3>
-          <ul>
-            {currentScenario.objectives.map((objective, index) => (
-              <li key={index}>{objective}</li>
-            ))}
-          </ul>
-        </section>
+      <div className="brief-section">
+        <h2 className="brief-section-title">Tips for Success</h2>
+        <ul>
+          {currentScenario.tips?.map((tip, index) => (
+            <li key={index}>{tip}</li>
+          )) || <li>No tips specified</li>}
+        </ul>
+      </div>
 
-        <section className="evaluation-criteria">
-          <h3>Evaluation Criteria</h3>
-          <ul>
-            {currentScenario.evaluationCriteria.map((criterion, index) => (
-              <li key={index}>{criterion}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="funnel-stage">
-          <h3>Sales Funnel Stage</h3>
-          <p>{currentScenario.funnelStage}</p>
-        </section>
-
-        <section className="key-documents">
-          <h3>Key Documents</h3>
-          <ul>
-            {currentScenario.keyDocuments.map((doc, index) => (
-              <li key={index}>
-                <a href={doc.url} target="_blank" rel="noopener noreferrer">
-                  {doc.title}
-                </a>
-              </li>
-            ))}
-          </ul>
-        </section>
-
-        <section className="current-metrics">
-          <h3>Current Performance</h3>
-          <div className="metrics-grid">
-            <div className="metric-card">
-              <span className="metric-value">{metrics.totalInteractions}</span>
-              <span className="metric-label">Total Interactions</span>
-            </div>
-            <div className="metric-card">
-              <span className="metric-value">{metrics.successfulSales}</span>
-              <span className="metric-label">Successful Sales</span>
-            </div>
-            <div className="metric-card">
-              <span className="metric-value">{metrics.averageResponseTime.toFixed(1)}s</span>
-              <span className="metric-label">Avg Response Time</span>
-            </div>
-            <div className="metric-card">
-              <span className="metric-value">{metrics.customerSatisfaction.toFixed(1)}</span>
-              <span className="metric-label">Customer Satisfaction</span>
-            </div>
-          </div>
-        </section>
+      <div className="brief-actions">
+        <Link
+          to={`/scenario/${scenarioId}/chat`}
+          className="btn btn-primary"
+        >
+          Start Conversation
+        </Link>
       </div>
     </div>
   );
-};
+}
 
 export default SimulatorBrief; 

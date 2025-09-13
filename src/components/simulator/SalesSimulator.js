@@ -1,29 +1,99 @@
-import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import SimulatorHome from './SimulatorHome';
 import SimulatorBrief from './SimulatorBrief';
 import SimulatorChat from './SimulatorChat';
+import RubricEvaluation from './RubricEvaluation';
 import ChatExport from './ChatExport';
-import './SalesSimulator.css';
+import { SimulatorProvider } from '../../contexts/SimulatorContext';
 
-/**
- * SalesSimulator Component
- * 
- * This component serves as the container for all simulator-related routes.
- * It handles the nested routing for the simulator experience.
- */
-const SalesSimulator = () => {
+// Route wrapper component to log route rendering
+const RouteWithLogging = ({ path, element }) => {
+  console.log(`Route matched: ${path}`);
+  return element;
+};
+
+function SalesSimulator() {
+  console.log('SalesSimulator component rendering');
+  const location = useLocation();
+  
+  useEffect(() => {
+    console.log('SalesSimulator location changed:', location.pathname);
+  }, [location]);
+  
   return (
-    <div className="sales-simulator">
+    <div className="simulator-container">
       <Routes>
-        <Route index element={<SimulatorHome />} />
-        <Route path="brief" element={<SimulatorBrief />} />
-        <Route path="chat" element={<SimulatorChat />} />
-        <Route path="export" element={<ChatExport />} />
-        <Route path="*" element={<Navigate to="/simulator" replace />} />
+        <Route 
+          path="/" 
+          element={
+            <RouteWithLogging 
+              path="/" 
+              element={<SimulatorHome />} 
+            />
+          } 
+        />
+        <Route 
+          path="/:scenarioId/brief" 
+          element={
+            <SimulatorProvider>
+              <RouteWithLogging 
+                path="/:scenarioId/brief" 
+                element={<SimulatorBrief />} 
+              />
+            </SimulatorProvider>
+          } 
+        />
+        <Route 
+          path="/:scenarioId/chat" 
+          element={
+            <SimulatorProvider>
+              <RouteWithLogging 
+                path="/:scenarioId/chat" 
+                element={<SimulatorChat />} 
+              />
+            </SimulatorProvider>
+          } 
+        />
+        <Route 
+          path="/:scenarioId/export" 
+          element={
+            <SimulatorProvider>
+              <RouteWithLogging 
+                path="/:scenarioId/export" 
+                element={<ChatExport />} 
+              />
+            </SimulatorProvider>
+          } 
+        />
+        <Route 
+          path="/:scenarioId/evaluation" 
+          element={
+            <SimulatorProvider>
+              <RouteWithLogging 
+                path="/:scenarioId/evaluation" 
+                element={<RubricEvaluation />} 
+              />
+            </SimulatorProvider>
+          } 
+        />
+        <Route 
+          path="*" 
+          element={
+            <RouteWithLogging 
+              path="*" 
+              element={
+                <div>
+                  <p>Redirecting to simulator home...</p>
+                  <Navigate to="/" replace />
+                </div>
+              } 
+            />
+          } 
+        />
       </Routes>
     </div>
   );
-};
+}
 
 export default SalesSimulator; 
